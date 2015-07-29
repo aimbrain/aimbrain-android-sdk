@@ -3,11 +3,13 @@
 
 ## AuthLibrary Object
 ```java
-AuthLibrary abo = new AuthLibrary(apikey);
+AuthLibrary abo = new AuthLibrary(apikey, context);
 abo.getAuthAsync(userid, events, handler);
 ```
 
 `apikey` - a static string which can be obtained by emailing founders@aimbrain.com. Acts as a single "namespace" for multiple `userid` identifiers.
+
+`context` - a static string for identifying different app contexts. For example, login screen and main app screen should have different context indicated by the parameter.
 
 `userid` - a static string for single entity, usually a user.
 
