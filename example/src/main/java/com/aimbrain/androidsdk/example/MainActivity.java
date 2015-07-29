@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
 
     public void authExample(String apikey, String userid, List<MotionEvent> events) {
         // Create AimBrain AuthLibrary object
-        AuthLibrary abo = new AuthLibrary(apikey);
+        AuthLibrary abo = new AuthLibrary(apikey, "homescreen_context");
 
         // Do asynchronous call to AimBrain's API for authentication
         abo.getAuthAsync(userid, events, new AuthAsyncResponseHandler() {

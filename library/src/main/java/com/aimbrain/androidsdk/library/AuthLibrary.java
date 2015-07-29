@@ -22,17 +22,23 @@ public class AuthLibrary {
     private static final String API_URL = "https://api.aimbrain.com/1/";
 
     private String mApikey;
+    private String mContext;
 
-    public AuthLibrary(String apikey) {
+    public AuthLibrary(String apikey, String context) {
         this.mApikey = apikey;
+        this.mContext = context;
     }
 
     // https://developer.android.com/reference/android/view/MotionEvent.html
-    public void getAuthAsync(String userid,List<MotionEvent> events, AuthAsyncResponseHandler handler) {
-        getAuthAsync(userid, events, System.currentTimeMillis(), handler);
+    public void getAuthAsync(String userid,List<MotionEvent> events, AuthAsyncResponseHandler handler, int connectTimeoutMillis, int readTimeoutMillis) {
+        getAuthAsync(userid, events, System.currentTimeMillis(), handler, connectTimeoutMillis, readTimeoutMillis);
     }
 
-    public void getAuthAsync(String userid, List<MotionEvent> events, Long nonce, AuthAsyncResponseHandler handler) {
+    public void getAuthAsync(String userid,List<MotionEvent> events, AuthAsyncResponseHandler handler) {
+        getAuthAsync(userid, events, System.currentTimeMillis(), handler, 5000, 5000);
+    }
+
+    public void getAuthAsync(String userid, List<MotionEvent> events, Long nonce, AuthAsyncResponseHandler handler, int cTimeoutMillis, int rTimeoutMillis) {
         // Parse all events
         JSONArray eventsObj = new JSONArray();
 
@@ -95,6 +101,7 @@ public class AuthLibrary {
         try {
             body.put("apikey", mApikey);
             body.put("id", userid);
+            body.put("context", mContext);
             body.put("nonce", nonce);
             body.put("events", eventsObj);
 
@@ -103,7 +110,7 @@ public class AuthLibrary {
         }
 
         //Log.d("REQUEST BODY:", body.toString());
-        new CallAPI().execute(new CallAPIRequest("auth", body.toString(), handler));
+        new CallAPI().execute(new CallAPIRequest("auth", body.toString(), handler, cTimeoutMillis, rTimeoutMillis));
     }
 
     // AsyncTask wrapper for API call
@@ -125,8 +132,8 @@ public class AuthLibrary {
                 urlConnection = (HttpsURLConnection) url.openConnection();
 
                 // Configure connection timeout
-                urlConnection.setConnectTimeout(2000);
-                urlConnection.setReadTimeout(3000);
+                urlConnection.setConnectTimeout(req.ConnectTimeoutMillis);
+                urlConnection.setReadTimeout(req.ReadTimeoutMillis);
 
                 // Configure POST request
                 urlConnection.setDoOutput(true);
@@ -229,11 +236,15 @@ public class AuthLibrary {
         private String endpoint;
         private String body;
         private AuthAsyncResponseHandler handler;
+        private int ConnectTimeoutMillis;
+        private int ReadTimeoutMillis;
 
-        public CallAPIRequest(String endpoint, String body, AuthAsyncResponseHandler handler) {
+        public CallAPIRequest(String endpoint, String body, AuthAsyncResponseHandler handler, int ConnectTimeoutMillis, int ReadTimeoutMillis) {
             this.endpoint = API_URL + endpoint;
             this.body = body;
             this.handler = handler;
+            this.ConnectTimeoutMillis = ConnectTimeoutMillis;
+            this.ReadTimeoutMillis = ReadTimeoutMillis;
         }
 
         public String getURL() {
