@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">AndroidSDK</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="enter_some_text">Enter Some Text</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="send_data">Send Data</string>
+    <string name="title_activity_list_view">ListViewActivity</string>
+    <string name="try_listview">Try the ListView</string>
 </resources>
