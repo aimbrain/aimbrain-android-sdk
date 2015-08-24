@@ -1,88 +1,41 @@
 package com.aimbrain.androidsdk.example;
 
-import android.app.Activity;
-import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.util.Log;
-import android.view.MotionEvent;
+import android.view.View;
 import android.widget.TextView;
 
+import com.aimbrain.androidsdk.R;
+import com.aimbrain.androidsdk.library.ABActivity;
 import com.aimbrain.androidsdk.library.AuthAsyncResponse;
 import com.aimbrain.androidsdk.library.AuthAsyncResponseHandler;
 import com.aimbrain.androidsdk.library.AuthLibrary;
+import com.aimbrain.androidsdk.library.EventStore;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-
-public class MainActivity extends Activity {
-    private static final String API_KEY = "demoapi"; // Returns random score for API testing
-    private static final String USER_ID = "demouser"; // Returns random score for API testing
-    private static final Integer MAX_EVENTS_LIST_SIZE = 1000; // To avoid running out of memory
-
-    private Context mContext;
+public class MainActivity extends ABActivity {
+    private static final String API_KEY = "demoapi2"; // Returns random score for API testing
+    private static final String USER_ID = "demouser2"; // Returns random score for API testing
     private TextView mText;
-    private Integer mCompleteTouchEvents;
-    private List<MotionEvent> mEventsList;
-
-
-    public MainActivity() {
-        mContext = this;
-        mCompleteTouchEvents = 0;
-        mEventsList = Collections.synchronizedList(new ArrayList<MotionEvent>());
-    }
 
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        mText = new TextView(mContext);
-        setContentView(mText);
-
-        mText.setText("Generate 3 complete touch events by swiping, tapping, etc to test demo of AimBrain's authentication API.");
+        setContentView(R.layout.activity_main);
+        mText = (TextView) findViewById(R.id.main_text);
+        mText.setText("Try interacting with the app...");
     }
 
-    @Override
-    // Catch events before all View elements
-    public boolean dispatchTouchEvent(@NonNull MotionEvent event) {
-        // Remove oldest events if we are over capacity
-        while (mEventsList.size() > MAX_EVENTS_LIST_SIZE - 1) {
-            mEventsList.remove(0);
-        }
+    // Send all gathered events to the AimBrain server
+    public void sendEvents(View view) {
 
-        // Add a copy of newest event
-        mEventsList.add(MotionEvent.obtain(event));
-
-        // Count how many complete (down -> move -> up) events were observed
-        if (event.getAction() == MotionEvent.ACTION_UP ||
-                event.getAction() == MotionEvent.ACTION_POINTER_UP) {
-                mCompleteTouchEvents++;
-        }
-
-        // Try authenticating the user every 3 complete touch events
-        // with all observed events while the app was running
-        if (mCompleteTouchEvents >= 3) {
-            mCompleteTouchEvents = 0;
-            String msg = "Requesting authentication from AimBrain's servers...";
-            Log.d(this.toString(), msg);
-            mText.setText(msg);
-
-            authExample(API_KEY, USER_ID, mEventsList);
-        }
-
-        // Pass events down the stack
-        return super.dispatchTouchEvent(event);
-    }
-
-    public void authExample(String apikey, String userid, List<MotionEvent> events) {
+        Log.d("Events", EventStore.getEvents().toString());
         // Create AimBrain AuthLibrary object
-        AuthLibrary abo = new AuthLibrary(apikey, "homescreen_context");
+        AuthLibrary abo = new AuthLibrary(API_KEY);
 
         // Do asynchronous call to AimBrain's API for authentication
-        abo.getAuthAsync(userid, events, new AuthAsyncResponseHandler() {
+        abo.getAuthAsync(USER_ID, new AuthAsyncResponseHandler() {
             @Override
             public void onSuccess(AuthAsyncResponse response) {
                 String msg = "Got reply from AimBrain's servers...\n";
@@ -108,5 +61,10 @@ public class MainActivity extends Activity {
             }
 
         });
+    }
+
+    public void startListView(View view) {
+        Intent intent = new Intent(this, ListViewActivity.class);
+        startActivity(intent);
     }
 }

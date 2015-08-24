@@ -24,17 +24,50 @@ public class AuthLibrary {
     private String mApikey;
     private String mContext;
 
-    public AuthLibrary(String apikey, String context) {
+    public AuthLibrary(String apikey) {
         this.mApikey = apikey;
+        this.mContext = "";
+    }
+
+    public AuthLibrary(String apiKey, String context) {
+        this.mApikey = apiKey;
         this.mContext = context;
     }
 
     // https://developer.android.com/reference/android/view/MotionEvent.html
-    public void getAuthAsync(String userid,List<MotionEvent> events, AuthAsyncResponseHandler handler, int connectTimeoutMillis, int readTimeoutMillis) {
+    public void getAuthAsync(String userid, AuthAsyncResponseHandler handler, int connectTimeoutMillis, int readTimeoutMillis) {
+        getAuthAsync(userid, System.currentTimeMillis(), handler, connectTimeoutMillis, readTimeoutMillis);
+    }
+
+    public void getAuthAsync(String userid, AuthAsyncResponseHandler handler) {
+        getAuthAsync(userid, System.currentTimeMillis(), handler, 5000, 5000);
+    }
+
+    public void getAuthAsync(String userid, Long nonce, AuthAsyncResponseHandler handler, int cTimeoutMillis, int rTimeoutMillis) {
+        // Parse all events
+
+        // Construct POST request body
+        JSONObject body = new JSONObject();
+
+        try {
+            body.put("apikey", mApikey);
+            body.put("id", userid);
+            body.put("nonce", nonce);
+            body.put("events", EventStore.getEvents());
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        //Log.d("REQUEST BODY:", body.toString());
+        new CallAPI().execute(new CallAPIRequest("auth", body.toString(), handler, cTimeoutMillis, rTimeoutMillis));
+    }
+
+    public void getAuthAsync(String userid, List<MotionEvent> events, AuthAsyncResponseHandler handler, int connectTimeoutMillis, int readTimeoutMillis) {
         getAuthAsync(userid, events, System.currentTimeMillis(), handler, connectTimeoutMillis, readTimeoutMillis);
     }
 
-    public void getAuthAsync(String userid,List<MotionEvent> events, AuthAsyncResponseHandler handler) {
+    public void getAuthAsync(String userid, List<MotionEvent> events, AuthAsyncResponseHandler handler) {
         getAuthAsync(userid, events, System.currentTimeMillis(), handler, 5000, 5000);
     }
 
@@ -112,6 +145,7 @@ public class AuthLibrary {
         //Log.d("REQUEST BODY:", body.toString());
         new CallAPI().execute(new CallAPIRequest("auth", body.toString(), handler, cTimeoutMillis, rTimeoutMillis));
     }
+
 
     // AsyncTask wrapper for API call
     private class CallAPI extends AsyncTask<CallAPIRequest, Void, CallAPIResponse> {
