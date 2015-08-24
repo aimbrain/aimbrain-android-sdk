@@ -95,7 +95,7 @@ public class ABEditText extends EditText {
             EventStore.addEvent(time, text.charAt(lengthBefore), "ET" + String.valueOf(this.getId()));
         }
         if (lengthAfter - lengthBefore == -1) {
-            EventStore.addEvent(time, -1, "ET" + String.valueOf(this.getId()));
+            EventStore.addEvent(time, 8, "ET" + String.valueOf(this.getId()));
         }
     }
 }

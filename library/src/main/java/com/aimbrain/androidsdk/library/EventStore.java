@@ -7,8 +7,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Objects;
-
 /**
  * Static EventStore class for storing interactions with the app
  */
@@ -16,6 +14,14 @@ public class EventStore {
 
     private static JSONArray eventList = null;
     private static final Object sync = new Object();
+
+    public static void resetEvents() {
+        synchronized (sync) {
+            if (eventList == null) {
+                eventList = new JSONArray();
+            }
+        }
+    }
 
     public static void addEvent(MotionEvent event, String context) {
         synchronized (sync) {
@@ -130,8 +136,8 @@ public class EventStore {
         }
     }
 
-    public static synchronized String getEvents() {
-        return eventList.toString();
+    public static synchronized JSONArray getEvents() {
+        return eventList;
     }
 
     private static String actionToString(int action) {

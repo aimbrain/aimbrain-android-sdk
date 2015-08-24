@@ -62,6 +62,7 @@ public class AuthLibrary {
         //Log.d("REQUEST BODY:", body.toString());
         new CallAPI().execute(new CallAPIRequest("auth", body.toString(), handler, cTimeoutMillis, rTimeoutMillis));
     }
+
     public void getAuthAsync(String userid, List<MotionEvent> events, AuthAsyncResponseHandler handler, int connectTimeoutMillis, int readTimeoutMillis) {
         getAuthAsync(userid, events, System.currentTimeMillis(), handler, connectTimeoutMillis, readTimeoutMillis);
     }

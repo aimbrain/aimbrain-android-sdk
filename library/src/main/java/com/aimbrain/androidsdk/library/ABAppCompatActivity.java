@@ -11,25 +11,25 @@ import android.view.MotionEvent;
 public class ABAppCompatActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
-        EventStore.addEvent(keyCode, event, "A" + getLocalClassName());
+        EventStore.addEvent(keyCode, event, "AC" + getLocalClassName());
         return super.onKeyDown(keyCode, event);
     }
 
     @Override
     public boolean onKeyLongPress(int keyCode, KeyEvent event) {
-        EventStore.addEvent(keyCode, event, "A" + getLocalClassName());
+        EventStore.addEvent(keyCode, event, "AC" + getLocalClassName());
         return super.onKeyLongPress(keyCode, event);
     }
 
     @Override
     public boolean onKeyUp(int keyCode, @NonNull KeyEvent event) {
-        EventStore.addEvent(keyCode, event, "A" + getLocalClassName());
+        EventStore.addEvent(keyCode, event, "AC" + getLocalClassName());
         return super.onKeyUp(keyCode, event);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        EventStore.addEvent(event, "A" + getLocalClassName());
+        EventStore.addEvent(event, "AC" + getLocalClassName());
         return super.onTouchEvent(event);
     }
 }

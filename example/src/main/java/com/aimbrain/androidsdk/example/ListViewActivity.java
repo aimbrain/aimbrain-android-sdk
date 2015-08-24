@@ -16,8 +16,10 @@ public class ListViewActivity extends ABListActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list_view);
 
-        items = new String[]{"Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6",
-                "Item 7", "Item 8", "Item 9", "Item 10", "Item 11", "Item 12", "Item 13", "Item 14", "Item 15"};
+        items = new String[50];
+        for (int i = 0; i < 50; i ++ ) {
+            items[i] = "Item " + String.valueOf(i);
+        }
         adapter = new ArrayAdapter<>(this, R.layout.item_layout, items);
 
         setListAdapter(adapter);

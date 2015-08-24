@@ -33,7 +33,7 @@ public class ABButton extends Button {
 
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
-        EventStore.addEvent(event, "B" + String.valueOf(this.getId()));
+        EventStore.addEvent(event, "BT" + String.valueOf(this.getId()));
         return super.onTouchEvent(event);
     }
 }
