@@ -13,7 +13,7 @@ import com.aimbrain.androidsdk.library.EventStore;
 /**
  * Wrapper for the TextView widget.
  */
-public class ABTextView extends TextView{
+public class ABTextView extends TextView {
     public ABTextView(Context context) {
         super(context);
     }

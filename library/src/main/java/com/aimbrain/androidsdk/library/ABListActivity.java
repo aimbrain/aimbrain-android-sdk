@@ -1,6 +1,5 @@
 package com.aimbrain.androidsdk.library;
 
-import android.app.Activity;
 import android.app.ListActivity;
 import android.support.annotation.NonNull;
 import android.view.KeyEvent;

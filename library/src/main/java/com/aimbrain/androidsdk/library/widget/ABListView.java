@@ -13,7 +13,7 @@ import com.aimbrain.androidsdk.library.EventStore;
 /**
  * Wrapper for the ListView widget.
  */
-public class ABListView extends ListView{
+public class ABListView extends ListView {
     public ABListView(Context context) {
         super(context);
     }
