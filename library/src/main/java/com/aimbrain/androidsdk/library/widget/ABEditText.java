@@ -5,7 +5,6 @@ import android.content.Context;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.widget.EditText;
@@ -90,7 +89,6 @@ public class ABEditText extends EditText {
     protected void onTextChanged(CharSequence text, int start, int lengthBefore, int lengthAfter) {
         long time = System.currentTimeMillis();
         super.onTextChanged(text, start, lengthBefore, lengthAfter);
-        Log.d("TextChanged", "text" + Integer.toString(start) + Integer.toString(lengthBefore) + Integer.toString(lengthAfter));
         if (lengthAfter - lengthBefore == 1) {
             EventStore.addEvent(time, text.charAt(lengthBefore), "ET" + String.valueOf(this.getId()));
         }

@@ -17,9 +17,7 @@ public class EventStore {
 
     public static void resetEvents() {
         synchronized (sync) {
-            if (eventList == null) {
-                eventList = new JSONArray();
-            }
+            eventList = new JSONArray();
         }
     }
 
