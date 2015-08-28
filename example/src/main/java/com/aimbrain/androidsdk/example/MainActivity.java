@@ -14,8 +14,8 @@ import com.aimbrain.androidsdk.library.AuthLibrary;
 import com.aimbrain.androidsdk.library.EventStore;
 
 public class MainActivity extends ABActivity {
-    private static final String API_KEY = "demoapi2"; // Returns random score for API testing
-    private static final String USER_ID = "demouser2"; // Returns random score for API testing
+    private static final String API_KEY = "KL1"; // Returns random score for API testing
+    private static final String USER_ID = "testing_user1"; // Returns random score for API testing
     private TextView mText;
 
 
