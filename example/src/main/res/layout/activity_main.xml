@@ -21,7 +21,9 @@
         android:onClick="startListView"/>
 
     <com.aimbrain.androidsdk.library.widget.ABEditText
-        android:layout_width="140dp"
+        android:singleLine="true"
+        android:inputType="numberPassword"
+        android:layout_width="170dp"
         android:layout_height="wrap_content"
         android:hint="@string/enter_some_text"
         android:id="@+id/main_edit"/>

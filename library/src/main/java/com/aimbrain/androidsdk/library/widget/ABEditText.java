@@ -8,7 +8,6 @@ import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.widget.EditText;
-import android.widget.TextView;
 
 import com.aimbrain.androidsdk.library.EventStore;
 
@@ -18,47 +17,19 @@ import com.aimbrain.androidsdk.library.EventStore;
 public class ABEditText extends EditText {
     public ABEditText(Context context) {
         super(context);
-        setOnEditorActionListener(new OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                EventStore.addEvent(event.getKeyCode(), event, "ET" + String.valueOf(v.getId()));
-                return false;
-            }
-        });
     }
 
     public ABEditText(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setOnEditorActionListener(new OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                EventStore.addEvent(event.getKeyCode(), event, "ET" + String.valueOf(v.getId()));
-                return false;
-            }
-        });
     }
 
     public ABEditText(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        setOnEditorActionListener(new OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                EventStore.addEvent(event.getKeyCode(), event, "ET" + String.valueOf(v.getId()));
-                return false;
-            }
-        });
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public ABEditText(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        setOnEditorActionListener(new OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                EventStore.addEvent(event.getKeyCode(), event, "ET" + String.valueOf(v.getId()));
-                return false;
-            }
-        });
     }
 
     @Override
@@ -76,13 +47,13 @@ public class ABEditText extends EditText {
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
         EventStore.addEvent(keyCode, event, "ET" + String.valueOf(this.getId()));
-        return super.onKeyPreIme(keyCode, event);
+        return super.onKeyDown(keyCode, event);
     }
 
     @Override
     public boolean onKeyUp(int keyCode, @NonNull KeyEvent event) {
         EventStore.addEvent(keyCode, event, "ET" + String.valueOf(this.getId()));
-        return super.onKeyPreIme(keyCode, event);
+        return super.onKeyUp(keyCode, event);
     }
 
     @Override
@@ -90,7 +61,7 @@ public class ABEditText extends EditText {
         long time = System.currentTimeMillis();
         super.onTextChanged(text, start, lengthBefore, lengthAfter);
         if (lengthAfter - lengthBefore == 1) {
-            EventStore.addEvent(time, text.charAt(lengthBefore), "ET" + String.valueOf(this.getId()));
+            EventStore.addEvent(time, text.charAt(start + lengthBefore), "ET" + String.valueOf(this.getId()));
         }
         if (lengthAfter - lengthBefore == -1) {
             EventStore.addEvent(time, 8, "ET" + String.valueOf(this.getId()));
