@@ -1,118 +1,169 @@
-# AimBrain Android SDK
+#Aimbrain SDK integration
 
 
-## Wrapper Classes
+## Permissions
+SDK requires the following permissions:
 
-The following classes have wrap the corresponding classes with interaction event collection.
-For widgets it is important to use them in both layouts and Java code.
+`android.permission.INTERNET`
 
-`ABButton` - wrapper for the Button widget.
+`android.permission.ACCESS_NETWORK_STATE`
 
-`ABEditText` - wrapper for the EditText widget.
+Those permissions are included in SDK’s manifest (there is no need to include it into application’s manifest)
 
-`ABGridLayout` - wrapper for the GridLayout widget.
+## Graddle sync
+1. Download and extract module project.
+2. Add module to your project by selecting File -> New -> Import module.
+3. Select the directory where you’ve just extracted the source code and confirm.
+4. On you project name right click -> Open module settings -> Dependencies tab -> select (+) icon -> Module dependency -> select **aimbrain**.
+5. Choose Select Project with Gradle Files.
 
-`ABLinearLayout` - wrapper for the LinearLayout widget.
-
-`ABListView` - wrapper for the ListView widget.
-
-`ABRelativeLayout` - wrapper for the RelativeLayout widget.
-
-`ABTextView` - wrapper for the TextView widget.
-
-The Activity wrappers support out of context event capture.
-
-`ABActivity` - wrapper for the Activity class.
-
-`ABAppCompatActivity` - wrapper for the AppCompatActivity class.
-
-`ABListActivity` - wrapper for the ListActivity class.
+## Integration (Setting application class)
+In order to integrate aimbrain SDK it is necessary to set up application name in project’s `AndroidManifest.xml`.
+If no `Application` class extensions are needed, use `com.aimbrain.sdk.AMBNApplication.AMBNApplication`, otherwise use your extension's name.
 
 
-## EventStore
+```xml
+<application android:name=“com.aimbrain.sdk.AMBNApplication.AMBNApplication”>
+  ```
 
-The EventStore provides methods for manually adding events to the EventStore, in case the elements used are not yet supported by wrappers. Explicit use not recommended.
+
+## Starting data collection
+Data collection must be started manually, using `startCollectingData` method of `Manager` class instance. `Window` object that is currently displayed on top needs to be passed as parameter.
+Example of starting data collection on `Activity` creation has been provided.
 
 ```java
-public class EventStore {
-
-  // Remove accumulated events. Use when restarting session.
-  public static void resetEvents() {...}
-
-  // Add a MotionEvent to the event store.
-  public static void addEvent(MotionEvent event, String context) {...}
-
-  // Add a KeyEvent to the event store.
-  public static void addEvent(int keyCode, KeyEvent event, String context) {...}
-
-  // Manually add a text change event to the event store. Used when soft keyboards don't fire KeyEvent.
-  public static void addEvent(long time, int keyCode, String context) {...}
-
-  // Get accumulated events.
-  public static synchronized JSONArray getEvents() {...}
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        Manager.getInstance().startCollectingData(getWindow());
+    }
 }
-```
-
-## AuthLibrary Object
-
-```java
-AuthLibrary abo = new AuthLibrary(apikey);
-abo.getAuthAsync(userid, handler);
-```
-
-`apikey` - a static string which can be obtained by emailing founders@aimbrain.com. Acts as a single "namespace" for multiple `userid` identifiers.
-
-`userid` - a static string for single entity, usually a user.
-
-`handler` - an `AuthAsyncResponseHandler` object with two methods, `onSuccess(AuthAsyncResponse response)` and `onFailure(int statusCode, String message, Throwable exception)`. The methods are to be overridden with ones that implement required functionality.
-
-
-## AuthAsyncResponseHandler Object
+  ```
+If data needs to be collected since creating application, extend `AMBNApplication` class as shown in the example.
 
 ```java
-AuthAsyncResponseHandler handler = new AuthAsyncResponseHandler() {
- @Override
- public void onSuccess(AuthAsyncResponse response) {
-  // Method that gets called on successful server response
- }
+public class MyApplication extends AMBNApplication {
 
- @Override
- public void onFailure(int statusCode, String message, Throwable e) {
-  // Method that gets called on failure to receive, parse or
-  // request timeout
- }};
-```
-
-## AuthAsyncResponse Object
-```java
-public class AuthAsyncResponse {
- public final Integer statusCode;
- public final String body;
- public final Double score;
- public final String method;
- public final String id;
- public final Long nonce;
-
- ...
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        Manager.getInstance().startCollectingData(null);
+    }
 }
-```
+  ```
 
-An object which gets populated after receiving a successful reply.
+Remember to set up appropriate application name in project’s `AndroidManifest.xml`.
 
 
-## Manual Motion Event Collection API AuthLibrary Object
+```xml
+<application android:name=“com.my.package.MyApplication”>
+  ```
+
+Calling `startCollectingData` with `null` as parameter results with starting data collection after on next activity start event.
+
+## Configuration
+In order to be able to communicate with server, application identifier and secret need to be passed in each request. Relevant configuration parameters should be passed to the SDK with use of `Manager`’s `configure` method.
 
 ```java
-AuthLibrary abo = new AuthLibrary(apikey, context);
-abo.getAuthAsync(userid, events, handler);
-```
+Manager.getInstance().configure("applicationID", "secret");
+  ```
 
-`apikey` - a static string which can be obtained by emailing founders@aimbrain.com. Acts as a single "namespace" for multiple `userid` identifiers.
+## Adding Window to manager
+The process of collecting data requires `Manager` instance object to be notified about changing top `Window` object. Window changes associated with changing top Activity are handled automatically, however there is need to manually notify `Manager` instance about any other window created. As an example, when `Dialog` object is created, `Manager` instance object needs to be notified in the manner shown in example code.
 
-`context` - a static string for identifying different app contexts. For example, login screen and main app screen should have different context indicated by the parameter.
+```java
+//called in Activity’s method
+final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+AlertDialog dialog = builder.show();
 
-`userid` - a static string for single entity, usually a user.
+//notify Manager about changing top Window object
+Manager.getInstance().windowChanged(dialog.getWindow());
 
-`events` - an ArrayList of MotionEvent objects. A copy of MotionEvent object can be done using `obtain`, e.g.: `mEventsList.add(MotionEvent.obtain(event));`
+  ```
 
-`handler` - an `AuthAsyncResponseHandler` object with two methods, `onSuccess(AuthAsyncResponse response)` and `onFailure(int statusCode, String message, Throwable exception)`. The methods are to be overridden with ones that implement required functionality.
+## Connecting to server
+Data collection is started when application is created, however it is programmer’s responsibility to take care of sending them to the server. SDK shares convenient methods that allow accomplish this task.
+
+### Starting new session
+In order to communicate with application server, there is need to establish session. Assuming appropriate configuration parameters were passed to the instance of `Manager` class, session might be established as shown in example.
+
+```java
+Manager.getInstance().createSession("userId", new SessionCallback() {
+   @Override
+   public void onSessionCreated(String session) {
+       // implement method called after session has been created
+   }
+});
+  ```
+
+Session string returned on successful session creation is stored within inner object of Manager - there is no need to store this string in separate variable. Created session will be used for communication with server until creating another session.
+
+### Sending data
+After creating session, we can send data gathered for analysis to the server. To do so, call `submitCollectedData` method on Manager’s class instance.
+
+```java
+Manager.getInstance().submitCollectedData(new ScoreCallback() {
+   @Override
+   public void success(ScoreModel scoreModel) {
+      // implement method called after receiving
+      // response from server with current score
+   }
+});
+  ```
+
+Server responses for data submission with current behavioural score. The `scoreModel` object contains status (1 for learning, 0 for learned) and current score as double.
+
+### Scheduling
+Object of `Manager` class allows for easy scheduling of data submission with use of `scheduleDataSubmission` method. The method may be called with the following parameters:
+`delay` - delay before first submission in milliseconds
+`period` - period between next data submissions in milliseconds
+`scoreCallback` - callback for receiving responses with current score from server (optional)
+
+```java
+Manager.getInstance().scheduleDataSubmission(0, 10000, new ScoreCallback() {
+   @Override
+   public void success(ScoreModel scoreModel) {
+       //implement method called after successful data submission
+   }
+});
+  ```
+
+### Getting current score
+There is an option to get current score from the server without sending any data. To do so use `getCurrentScore` method from `Manager` class instance.
+
+```java
+Manager.getInstance().getCurrentScore(new ScoreCallback() {
+   @Override
+   public void success(ScoreModel scoreModel) {
+       // implement method called after receiving
+       // response from server with current score
+   }
+});
+  ```
+
+## Privacy guards
+In order to disable collecting data from concrete views it is necessary to create a `PrivacyGuard` object with a `Set` of these views. Then this `PrivacyGuard` object has to be added to the `Manager` instance.
+
+```java
+EditText editTextToIgnore = (EditText)findViewById(R.id.editText);
+HashSet<View> setWithIgnoredViews = new HashSet<>();
+setWithIgnoredViews.add(editTextToIgnore);
+PrivacyGuard privacyGuard = new PrivacyGuard(setWithIgnoredViews);
+Manager.getInstance().addPrivacyGuard(privacyGuard);
+  ```
+
+For ignoring all views in application `true` parameter has to be passed into the `PrivacyGuard` constructor.
+
+```java
+PrivacyGuard privacyGuard = new PrivacyGuard(true);
+Manager.getInstance().addPrivacyGuard(privacyGuard);
+  ```
+
+## Mapping view identifiers
+Collected data contains touched view path consisted of view identifiers, starting from touched view up to the root view. All views with no identifier defined are ignored while building this path.
+SDK allows for defining and customizing view identifiers. If no identifier has been defined for view (for example in layout xml file), view identifier may be set as shown in example.
+The use of `ViewIdMapper` class does not change actual identifiers - it only adds mappings used by SDK.
+
+```java
+ViewIdMapper.getInstance().putViewId(view, "myView");
+  ```
