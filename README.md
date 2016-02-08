@@ -1,4 +1,4 @@
-#Aimbrain SDK integration
+#AimBrain SDK integration
 
 
 ## Permissions
@@ -8,7 +8,7 @@ SDK requires the following permissions:
 
 `android.permission.ACCESS_NETWORK_STATE`
 
-Those permissions are included in SDK’s manifest (there is no need to include it into application’s manifest)
+Those permissions are included in SDK’s manifest (there is no need to include it into the application’s manifest)
 
 ## Graddle sync
 1. Download and extract module project.
@@ -28,7 +28,7 @@ If no `Application` class extensions are needed, use `com.aimbrain.sdk.AMBNAppli
 
 
 ## Starting data collection
-Data collection must be started manually, using `startCollectingData` method of `Manager` class instance. `Window` object that is currently displayed on top needs to be passed as parameter.
+Data collection must be started manually, using `startCollectingData` method of the `Manager` class instance. `Window` object that is currently displayed on top needs to be passed as parameter.
 Example of starting data collection on `Activity` creation has been provided.
 
 ```java
@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     }
 }
   ```
-If data needs to be collected since creating application, extend `AMBNApplication` class as shown in the example.
+If data needs to be collected since the application creation, extend `AMBNApplication` class as shown in the example.
 
 ```java
 public class MyApplication extends AMBNApplication {
@@ -59,33 +59,33 @@ Remember to set up appropriate application name in project’s `AndroidManifest.
 <application android:name=“com.my.package.MyApplication”>
   ```
 
-Calling `startCollectingData` with `null` as parameter results with starting data collection after on next activity start event.
+Calling `startCollectingData` with `null` as parameter results in starting data collection on the next activity start event.
 
 ## Configuration
-In order to be able to communicate with server, application identifier and secret need to be passed in each request. Relevant configuration parameters should be passed to the SDK with use of `Manager`’s `configure` method.
+In order to communicate with the server, the application identifier and secret need to be passed with each request. Relevant configuration parameters should be passed to the SDK with use of `Manager`’s `configure` method.
 
 ```java
 Manager.getInstance().configure("applicationID", "secret");
   ```
 
 ## Adding Window to manager
-The process of collecting data requires `Manager` instance object to be notified about changing top `Window` object. Window changes associated with changing top Activity are handled automatically, however there is need to manually notify `Manager` instance about any other window created. As an example, when `Dialog` object is created, `Manager` instance object needs to be notified in the manner shown in example code.
+The process of collecting the data requires the `Manager` instance object to be notified about the changing of the top `Window` object. Window changes associated with the changing of the top Activity are handled automatically, however you have to manually notify `Manager` instance about any other window creation. For example, when a `Dialog` object is created, the `Manager` instance object needs to be notified in the manner shown in the example code.
 
 ```java
-//called in Activity’s method
+//called in the Activity’s method
 final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 AlertDialog dialog = builder.show();
 
-//notify Manager about changing top Window object
+//notify Manager about the changing top Window object
 Manager.getInstance().windowChanged(dialog.getWindow());
 
   ```
 
 ## Connecting to server
-Data collection is started when application is created, however it is programmer’s responsibility to take care of sending them to the server. SDK shares convenient methods that allow accomplish this task.
+Data collection is started when the application is created, however it is the programmer’s responsibility to take care of sending it to the server. The SDK has the following methods for this task.
 
 ### Starting new session
-In order to communicate with application server, there is need to establish session. Assuming appropriate configuration parameters were passed to the instance of `Manager` class, session might be established as shown in example.
+In order to communicate with the application server, it is required to establisha session. Assuming the appropriate configuration parameters were passed to the instance of the `Manager` class, a session can be established as shown in example.
 
 ```java
 Manager.getInstance().createSession("userId", new SessionCallback() {
@@ -96,10 +96,10 @@ Manager.getInstance().createSession("userId", new SessionCallback() {
 });
   ```
 
-Session string returned on successful session creation is stored within inner object of Manager - there is no need to store this string in separate variable. Created session will be used for communication with server until creating another session.
+The session string returned on successful session creation is stored within inner object of the Manager - there is no need to store this string in a separate variable. The created session will be used for communicating with server until the creation of another session.
 
 ### Sending data
-After creating session, we can send data gathered for analysis to the server. To do so, call `submitCollectedData` method on Manager’s class instance.
+After creating a session, we can send data gathered for analysis to the server. To do so, call `submitCollectedData` method of the Manager’s class instance.
 
 ```java
 Manager.getInstance().submitCollectedData(new ScoreCallback() {
@@ -111,13 +111,13 @@ Manager.getInstance().submitCollectedData(new ScoreCallback() {
 });
   ```
 
-Server responses for data submission with current behavioural score. The `scoreModel` object contains status (1 for learning, 0 for learned) and current score as double.
+Server responses for data submission contain the current behavioural score. The `scoreModel` object contains the status (1 for learning, 0 for learned) and the current score as a double.
 
 ### Scheduling
-Object of `Manager` class allows for easy scheduling of data submission with use of `scheduleDataSubmission` method. The method may be called with the following parameters:
-`delay` - delay before first submission in milliseconds
-`period` - period between next data submissions in milliseconds
-`scoreCallback` - callback for receiving responses with current score from server (optional)
+Object of the `Manager` class allows for easy scheduling of data submission with the use of `scheduleDataSubmission` method. The method may be called with the following parameters:
+`delay` - delay before the first submission in milliseconds
+`period` - period between data submissions in milliseconds
+`scoreCallback` - callback for receiving responses with the current score from the server (optional)
 
 ```java
 Manager.getInstance().scheduleDataSubmission(0, 10000, new ScoreCallback() {
@@ -128,8 +128,8 @@ Manager.getInstance().scheduleDataSubmission(0, 10000, new ScoreCallback() {
 });
   ```
 
-### Getting current score
-There is an option to get current score from the server without sending any data. To do so use `getCurrentScore` method from `Manager` class instance.
+### Getting the current score
+There is an option to get the current score from the server without sending any data. To do so use the `getCurrentScore` method of the `Manager` class instance.
 
 ```java
 Manager.getInstance().getCurrentScore(new ScoreCallback() {
@@ -142,7 +142,7 @@ Manager.getInstance().getCurrentScore(new ScoreCallback() {
   ```
 
 ## Privacy guards
-In order to disable collecting data from concrete views it is necessary to create a `PrivacyGuard` object with a `Set` of these views. Then this `PrivacyGuard` object has to be added to the `Manager` instance.
+In order to disable collecting data from specific views it is necessary to create a `PrivacyGuard` object with a `Set` of these views. Then this `PrivacyGuard` object has to be added to the `Manager` instance.
 
 ```java
 EditText editTextToIgnore = (EditText)findViewById(R.id.editText);
@@ -152,7 +152,7 @@ PrivacyGuard privacyGuard = new PrivacyGuard(setWithIgnoredViews);
 Manager.getInstance().addPrivacyGuard(privacyGuard);
   ```
 
-For ignoring all views in application `true` parameter has to be passed into the `PrivacyGuard` constructor.
+For ignoring all views in the application a `true`  value has to be passed as the first parameter in the `PrivacyGuard` constructor.
 
 ```java
 PrivacyGuard privacyGuard = new PrivacyGuard(true);
@@ -160,9 +160,9 @@ Manager.getInstance().addPrivacyGuard(privacyGuard);
   ```
 
 ## Mapping view identifiers
-Collected data contains touched view path consisted of view identifiers, starting from touched view up to the root view. All views with no identifier defined are ignored while building this path.
-SDK allows for defining and customizing view identifiers. If no identifier has been defined for view (for example in layout xml file), view identifier may be set as shown in example.
-The use of `ViewIdMapper` class does not change actual identifiers - it only adds mappings used by SDK.
+Collected data contains the touched view's path consisting of view identifiers, starting from the touched view up to the root view. All views with no identifiers defined are ignored while building this path.
+SDK allows for defining and customizing view identifiers. If no identifier has been defined for a view (for example, in the layout xml file), the view identifier may be set as shown in the example.
+The use of `ViewIdMapper` class does not change actual identifiers - it only adds mappings used by the SDK.
 
 ```java
 ViewIdMapper.getInstance().putViewId(view, "myView");
