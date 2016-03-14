@@ -172,6 +172,7 @@ public class Server {
 
     private void sendAllDataFromQueue(final ScoreCallback scoreCallback) throws InternalException {
         try {
+            final String sessionCopy = session;
             while(!this.dataQueue.isEmpty())
             {
                 final BehaviouralDataModel behaviouralDataModel = this.dataQueue.removeFirst();
@@ -182,7 +183,7 @@ public class Server {
                         if(scoreCallback != null) {
                             ScoreModel scoreModel = null;
                             try {
-                                scoreModel = new ScoreModel(response.getDouble("score"), response.getInt("status"));
+                                scoreModel = new ScoreModel(response.getDouble("score"), response.getInt("status"), sessionCopy);
                                 scoreCallback.success(scoreModel);
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -212,6 +213,7 @@ public class Server {
         try {
             if(isOnline()) {
                 if(session != null) {
+                    final String sessionCopy = session;
                     JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
                     AMBNObjectRequest jsonRequest = new AMBNObjectRequest
                             (getHeadersMap(jsonObject, this.scoreURL), Request.Method.POST, this.scoreURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
@@ -219,7 +221,7 @@ public class Server {
                                 public void onResponse(JSONObject response) {
                                     try {
                                         if (scoreCallback != null) {
-                                            ScoreModel scoreModel = new ScoreModel(response.getDouble("score"), response.getInt("status"));
+                                            ScoreModel scoreModel = new ScoreModel(response.getDouble("score"), response.getInt("status"), sessionCopy);
                                             scoreCallback.success(scoreModel);
                                         }
                                     } catch (JSONException e) {
