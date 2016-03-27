@@ -1,6 +1,7 @@
 package com.aimbrain.sdk.server;
 
 
+import com.aimbrain.sdk.models.SessionModel;
 
 /**
  * Callback for created session event
@@ -8,7 +9,7 @@ package com.aimbrain.sdk.server;
 public interface SessionCallback {
     /**
      * Method is called after successful session creation
-     * @param session created session string
+     * @param session created session model
      */
-    public void onSessionCreated(String session);
+    public void onSessionCreated(SessionModel session);
 }

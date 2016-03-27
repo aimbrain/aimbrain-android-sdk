@@ -1,9 +1,22 @@
 package com.aimbrain.sdk;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.media.Image;
 import android.view.View;
 import android.view.Window;
 
+import com.aimbrain.sdk.faceCapture.FaceCaptureActivity;
+import com.aimbrain.sdk.faceCapture.PictureManager;
+import com.aimbrain.sdk.models.SessionModel;
+import com.aimbrain.sdk.models.StringListDataModel;
+import com.aimbrain.sdk.server.FaceActions;
+import com.aimbrain.sdk.server.FaceCompareCallback;
+import com.aimbrain.sdk.server.PhotosAuthenticateCallback;
+import com.aimbrain.sdk.server.PhotosCallback;
+import com.aimbrain.sdk.server.PhotosEnrollCallback;
 import com.android.volley.Response;
 import com.aimbrain.sdk.AMBNApplication.AMBNApplication;
 import com.aimbrain.sdk.activityCallback.AMBNActivityLifecycleCallback;
@@ -20,8 +33,10 @@ import com.aimbrain.sdk.server.Server;
 import com.aimbrain.sdk.collectors.TextEventCollector;
 import com.aimbrain.sdk.server.SessionCallback;
 
+import java.lang.reflect.Array;
 import java.net.ConnectException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.WeakHashMap;
@@ -40,7 +55,7 @@ public class Manager {
     private TimerTask timerTask;
     private AMBNActivityLifecycleCallback activityLifecycleCallback;
     private ArrayList<PrivacyGuard> privacyGuards;
-
+    private PhotosCallback photosCallback;
     /**
      * Returns singleton object of the class
      * @return instance of class Manager
@@ -208,12 +223,68 @@ public class Manager {
      * @throws SessionException thrown when session has not yet been created
      * @throws ConnectException thrown when connection problem occurs
      */
+
     public void getCurrentScore(ScoreCallback scoreCallback) throws InternalException, SessionException, ConnectException {
         server.getCurrentScore(scoreCallback);
     }
 
+    /**
+     * Sends photo to enroll endpoint on the server.
+     * @param photos photos to send
+     * @param photosEnrollCallback callback for receiving response from server
+     * @throws InternalException thrown when preparing request for server fails
+     * @throws SessionException thrown when session has not yet been created
+     * @throws ConnectException thrown when connection problem occurs
+     */
+    public void sendProvidedPhotosToEnroll(List<Bitmap> photos, PhotosEnrollCallback photosEnrollCallback) throws InternalException, ConnectException, SessionException{
+        this.photosCallback = photosEnrollCallback;
 
-    public String getSession() {
+        sendPhotos(encodePhotos(photos), FaceActions.FACE_ENROLL);
+    }
+
+    /**
+     * Sends photo to authentication endpoint on the server.
+     * @param photos photos to send
+     * @param photosAuthenticateCallback callback for receiving response from server
+     * @throws InternalException thrown when preparing request for server fails
+     * @throws SessionException thrown when session has not yet been created
+     * @throws ConnectException thrown when connection problem occurs
+     */
+    public void sendProvidedPhotosToAuthenticate(List<Bitmap> photos, PhotosAuthenticateCallback photosAuthenticateCallback) throws InternalException, ConnectException, SessionException{
+        this.photosCallback = photosAuthenticateCallback;
+
+        sendPhotos(encodePhotos(photos), FaceActions.FACE_AUTH);
+    }
+
+    /**
+     * Compares two faces.
+     * @param firstFacePhotos photos of the first face to compare
+     * @param secondFacePhotos photos of the second face to compare
+     * @param callback callback for receiving response from server
+     * @throws InternalException thrown when preparing request for server fails
+     * @throws SessionException thrown when session has not yet been created
+     * @throws ConnectException thrown when connection problem occurs
+     */
+    public void compareFacesPhotos(List<Bitmap> firstFacePhotos, List<Bitmap> secondFacePhotos, FaceCompareCallback callback) throws InternalException, ConnectException, SessionException {
+        server.compareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), callback);
+    }
+
+    private StringListDataModel encodePhotos(List<Bitmap> photos){
+        ArrayList<String> encoded = new ArrayList<>();
+        for(Bitmap photo : photos){
+            encoded.add(PictureManager.getEncodedCompressedPhoto(photo));
+        }
+        StringListDataModel encodedPhotosModel = new StringListDataModel();
+        encodedPhotosModel.setData(encoded);
+        return encodedPhotosModel;
+    }
+
+    private void sendPhotos(StringListDataModel photos, FaceActions faceAction) throws InternalException, ConnectException, SessionException{
+        this.photosCallback.beforeSendRequest();
+        server.sendProvidedPhotos(photos, this.photosCallback, faceAction);
+    }
+
+    public SessionModel getSession() {
         return server.getSession();
     }
 }

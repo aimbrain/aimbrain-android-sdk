@@ -1,5 +1,4 @@
-#AimBrain SDK integration
-
+# AimBrain SDK integration
 
 ## Permissions
 SDK requires the following permissions:
@@ -26,6 +25,30 @@ If no `Application` class extensions are needed, use `com.aimbrain.sdk.AMBNAppli
 <application android:name=“com.aimbrain.sdk.AMBNApplication.AMBNApplication”>
   ```
 
+## Configuration
+In order to communicate with the server, the application identifier and secret need to be passed with each request. Relevant configuration parameters should be passed to the SDK with use of `Manager`’s `configure` method.
+
+```java
+Manager.getInstance().configure("AIMBRAIN_API_KEY", "AIMBRAIN_API_SECRET");
+```
+
+# Sessions
+
+## Starting a new session
+In order to communicate with the server, a session must be established. Assuming the appropriate configuration parameters were passed to the instance of the `Manager` class, a session can be established as shown in example.
+
+```java
+Manager.getInstance().createSession("userId", new SessionCallback() {
+  @Override
+  public void onSessionCreated(String session) {
+    // Implement method called after the session has been created
+  }
+});
+```
+
+The session string returned on successful session creation is stored within inner object of the Manager - there is no need to store this string in a separate variable. The created session will be used for communicating with server until the creation of another session.
+
+# Behavioural module
 
 ## Starting data collection
 Data collection must be started manually, using `startCollectingData` method of the `Manager` class instance. `Window` object that is currently displayed on top needs to be passed as parameter.
@@ -61,12 +84,6 @@ Remember to set up appropriate application name in project’s `AndroidManifest.
 
 Calling `startCollectingData` with `null` as a parameter results in starting data collection on the next activity start event.
 
-## Configuration
-In order to communicate with the server, the application identifier and secret need to be passed with each request. Relevant configuration parameters should be passed to the SDK with use of `Manager`’s `configure` method.
-
-```java
-Manager.getInstance().configure("apiKey", "secret");
-  ```
 
 ## Adding Window to manager
 The process of collecting the data requires the `Manager` instance object to be notified about the changing of the top `Window` object. Window changes associated with the changing of the top Activity are handled automatically, however you have to manually notify `Manager` instance about any other window creation. For example, when a `Dialog` object is created, the `Manager` instance object needs to be notified in the manner shown in the example code.
@@ -83,20 +100,6 @@ Manager.getInstance().windowChanged(dialog.getWindow());
 
 ## Connecting to server
 Data collection is started when the application is created, however it is the programmer’s responsibility to take care of sending it to the server. The SDK has the following methods for this task.
-
-### Starting a new session
-In order to communicate with the application server, it is required to establisha session. Assuming the appropriate configuration parameters were passed to the instance of the `Manager` class, a session can be established as shown in example.
-
-```java
-Manager.getInstance().createSession("userId", new SessionCallback() {
-   @Override
-   public void onSessionCreated(String session) {
-       // Implement method called after the session has been created
-   }
-});
-  ```
-
-The session string returned on successful session creation is stored within inner object of the Manager - there is no need to store this string in a separate variable. The created session will be used for communicating with server until the creation of another session.
 
 ### Sending data
 After creating a session, we can send data gathered for analysis to the server. To do so, call `submitCollectedData` method of the Manager’s class instance.
@@ -177,3 +180,84 @@ The use of `ViewIdMapper` class does not change actual identifiers - it only add
 ViewIdMapper.getInstance().putViewId(view, "myView");
   ```
 
+# Facial module
+
+## Taking pictures of the user's face
+In order to take picture of the user's face the `FaceCaptureActivity` has to be started. The resulting images can be obtained in `onActivtyResult` if the `resultCode` is `RESULT_OK`. The images are stored in the static field `FaceCaptureActivity.images`.
+```java
+//...
+Intent intent = new Intent(this, FaceCaptureActivity.class);
+intent.putExtra("upperText", upperText);
+intent.putExtra("lowerText", lowerText);
+startActivityForResult(intent, requestCode);
+//...
+
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+  super.onActivityResult(requestCode, resultCode, data);
+  if(resultCode == RESULT_OK){
+    this.images = FaceCaptureActivity.images;
+  }
+}
+
+```
+
+## Authenticating with the facial module
+In order to authenticate with the facial module use the `sendProvidedPhotosToAuthenticate` method of the `Manager` class.
+An array of cropped images of the face in Bitmap format is passed as the parameter.
+```java
+Manager.getInstance().sendProvidedPhotosToAuthenticate(facialImages, new PhotosAuthenticateCallback() {
+
+  @Override
+  public void success(FaceAuthenticateModel faceAuthenticateModel) {
+
+  }
+
+  @Override
+  public void failure(VolleyError volleyError) {
+
+  }
+
+  @Override
+  public void beforeSendRequest() {
+
+  }
+});
+```
+
+## Enrolling with the facial module
+Enrolling with the facial module is done by calling the `sendProvidedPhotosToEnroll` method of the `Manager` class.
+An array of cropped images of the face in Bitmap format is passed as the parameter.
+```java
+Manager.getInstance().sendProvidedPhotosToEnroll(facialImages, new PhotosEnrollCallback() {
+  @Override
+  public void success(FaceEnrollModel faceEnrollModel) {
+
+  }
+
+  @Override
+  public void failure(VolleyError volleyError) {
+  }
+
+  @Override
+  public void beforeSendRequest() {
+    ...
+  }
+});
+```
+
+## Comparing faces
+Two batches of images of faces can be compared using the`compareFacesPhotos` method of the `Manager` class.
+The method accepts an array of images of the first face and an array of images of the second face as parameters.
+```java
+Manager.getInstance().compareFacesPhotos(facialImages1, facialImages2, new FaceCompareCallback() {
+  @Override
+  public void success(FaceCompareModel faceCompareModel) {
+
+  }
+
+  @Override
+  public void failure(VolleyError volleyError) {
+
+  }
+});
+```
