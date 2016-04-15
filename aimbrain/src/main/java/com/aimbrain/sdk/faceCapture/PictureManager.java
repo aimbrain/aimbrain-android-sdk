@@ -18,14 +18,18 @@ public class PictureManager {
     public final static int MAX_PHOTO_HEIGHT = 300;
     public final static int COMPRESSION_RATIO = 100;
 
-    public static Bitmap cropBitmap(Bitmap photo, RectF maskBounds) {
+    public static Bitmap cropBitmap(Bitmap photo) {
 
-        int left = (int) (maskBounds.left - 0.1 * maskBounds.width());
-        int top = (int) (maskBounds.top - 0.1 * maskBounds.height());
-        int height = (int) (1.2 * maskBounds.height());
-        int width = (int) (1.2 * maskBounds.width());
+        int photo_w = photo.getWidth();
+        int photo_h = photo.getHeight();
+        int box_w = (int) (photo_w * FaceCaptureActivity.BOX_WIDTH);
+        int box_h = (int) (FaceCaptureActivity.BOX_RATIO * box_w);
+        int p_left = (int) ((photo_w - box_w) / 2 - box_w * 0.1);
+        int p_width = (int) (box_w * 1.2);
+        int p_top = (int) ((photo_h - box_h) / 2 - box_h * 0.1);
+        int p_height = (int) (box_h * 1.2);
 
-        return Bitmap.createBitmap(photo, left, top, width, height);
+        return Bitmap.createBitmap(photo, p_left, p_top, p_width, p_height);
     }
 
     public static Bitmap adjustSize(Bitmap photo, int maxHeight) {
@@ -62,11 +66,11 @@ public class PictureManager {
         return encodedPhoto;
     }
 
-    public static Bitmap getCroppedAndRotatedPhoto(Bitmap bmp, RectF maskBounds) {
+    public static Bitmap getCroppedAndRotatedPhoto(Bitmap bmp) {
         Bitmap croppedPhoto = null;
         try {
             Bitmap adjustedPhoto = PictureManager.rotatePhoto(bmp, -90);
-            adjustedPhoto = PictureManager.cropBitmap(adjustedPhoto, maskBounds);
+            adjustedPhoto = PictureManager.cropBitmap(adjustedPhoto);
             adjustedPhoto = PictureManager.adjustSize(adjustedPhoto, PictureManager.MAX_PHOTO_HEIGHT);
             croppedPhoto = adjustedPhoto;
         } catch (Exception e) {

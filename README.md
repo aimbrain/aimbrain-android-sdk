@@ -40,13 +40,28 @@ In order to communicate with the server, a session must be established. Assuming
 ```java
 Manager.getInstance().createSession("userId", new SessionCallback() {
   @Override
-  public void onSessionCreated(String session) {
+  public void onSessionCreated(SessionModel session) {
     // Implement method called after the session has been created
   }
 });
 ```
 
-The session string returned on successful session creation is stored within inner object of the Manager - there is no need to store this string in a separate variable. The created session will be used for communicating with server until the creation of another session.
+The returned SessionModel contains the following parameters:
+* sessionId - string containing session id for use with other API requests to maintain session semantics.
+* faceStatus - status of the Facial Module for given user (see below).
+* behaviourStatus - status of the Facial Module for given user and device pair (see below).
+
+
+Values possible for faceStatus field:
+* 0 - User not enrolled - facial authentication not available, enrollment required.
+* 1 - User enrolled - facial authentication available
+* 2 - Building template - enrollment done, AimBrain is building user template and no further action is required.
+
+Values possible for behaviourStatus field:
+* 0 - User not enrolled - behavioural authentication not available, enrollment required. 
+* 1 - User enrolled - behavioural authentication available.
+
+The SessionModel object returned on successful session creation is stored within inner object of the Manager - there is no need to store this object in a separate variable. The created session will be used for communicating with server until the creation of another session.
 
 # Behavioural module
 
@@ -56,31 +71,30 @@ Example of starting data collection on `Activity` creation has been provided.
 
 ```java
 public class MainActivity extends AppCompatActivity {
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        Manager.getInstance().startCollectingData(getWindow());
-    }
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    Manager.getInstance().startCollectingData(getWindow());
+  }
 }
-  ```
+```
 If data needs to be collected since the application creation, extend `AMBNApplication` class as shown in the example.
 
 ```java
 public class MyApplication extends AMBNApplication {
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        Manager.getInstance().startCollectingData(null);
-    }
+  @Override
+  public void onCreate() {
+    super.onCreate();
+    Manager.getInstance().startCollectingData(null);
+  }
 }
-  ```
+```
 
 Remember to set up appropriate application name in project’s `AndroidManifest.xml`.
 
 
 ```xml
 <application android:name=“com.my.package.MyApplication”>
-  ```
+```
 
 Calling `startCollectingData` with `null` as a parameter results in starting data collection on the next activity start event.
 
@@ -96,7 +110,7 @@ AlertDialog dialog = builder.show();
 // Notify Manager about changing top Window object
 Manager.getInstance().windowChanged(dialog.getWindow());
 
-  ```
+```
 
 ## Connecting to server
 Data collection is started when the application is created, however it is the programmer’s responsibility to take care of sending it to the server. The SDK has the following methods for this task.
@@ -106,13 +120,13 @@ After creating a session, we can send data gathered for analysis to the server. 
 
 ```java
 Manager.getInstance().submitCollectedData(new ScoreCallback() {
-   @Override
-   public void success(ScoreModel scoreModel) {
-      // Implement method called after receiving
-      // a response from the server with the current score
-   }
+  @Override
+  public void success(ScoreModel scoreModel) {
+    // Implement method called after receiving
+    // a response from the server with the current score
+  }
 });
-  ```
+```
 
 Server responses for data submission contain the current behavioural score. The `scoreModel` object contains the status (1 for learning, 0 for learned) and the current score as a double.
 
@@ -124,25 +138,25 @@ Object of the `Manager` class allows for easy scheduling of data submission with
 
 ```java
 Manager.getInstance().scheduleDataSubmission(0, 10000, new ScoreCallback() {
-   @Override
-   public void success(ScoreModel scoreModel) {
-       // Implement method called after successful data submission
-   }
+  @Override
+  public void success(ScoreModel scoreModel) {
+    // Implement method called after successful data submission
+  }
 });
-  ```
+```
 
 ### Getting the current score
 There is an option to get the current score from the server without sending any data. To do so use the `getCurrentScore` method of the `Manager` class instance.
 
 ```java
 Manager.getInstance().getCurrentScore(new ScoreCallback() {
-    @Override
-    public void success(ScoreModel scoreModel) {
-        // Implement method called after receiving
-        // response from the server with the current score
-    }
+  @Override
+  public void success(ScoreModel scoreModel) {
+    // Implement method called after receiving
+    // response from the server with the current score
+  }
 });
-  ```
+```
 
 ## Privacy guards
 In order to disable collecting data from specific views it is necessary to create a `PrivacyGuard` object with a `Set` of these views. Then this `PrivacyGuard` object has to be added to the `Manager` instance.
@@ -153,14 +167,14 @@ HashSet<View> setWithIgnoredViews = new HashSet<>();
 setWithIgnoredViews.add(editTextToIgnore);
 PrivacyGuard privacyGuard = new PrivacyGuard(setWithIgnoredViews);
 Manager.getInstance().addPrivacyGuard(privacyGuard);
-  ```
+```
 
 For ignoring all views in the application a `true`  value has to be passed as the first parameter in the `PrivacyGuard` constructor.
 
 ```java
 PrivacyGuard privacyGuard = new PrivacyGuard(true);
 Manager.getInstance().addPrivacyGuard(privacyGuard);
-  ```
+```
 
 ### Sensitive view guards
 In some cases it is preferable to only obfuscate the element that is being interacted with while still getting most of the behavioural data (for example in a pin code with a custom keyboard). In this case, views should be added to the SensitiveViewGuard. All of the child views will also be considered as sensitive.
@@ -168,7 +182,7 @@ In some cases it is preferable to only obfuscate the element that is being inter
 ```java
 // All of the elements on the Window will be considered as sensitive
 SensitiveViewGuard.addView(getWindow().getDecorView());
-  ```
+```
 When the view is marked as sensitive, it's id is salted (with the salt stored localy) and hashed before sending and the global touch x and y coordinates are set to 0.
 
 ## Mapping view identifiers
@@ -178,24 +192,56 @@ The use of `ViewIdMapper` class does not change actual identifiers - it only add
 
 ```java
 ViewIdMapper.getInstance().putViewId(view, "myView");
-  ```
+```
 
 # Facial module
 
 ## Taking pictures of the user's face
-In order to take picture of the user's face the `FaceCaptureActivity` has to be started. The resulting images can be obtained in `onActivtyResult` if the `resultCode` is `RESULT_OK`. The images are stored in the static field `FaceCaptureActivity.images`.
+In order to take picture of the user's face the `PhotoFaceCaptureActivity` has to be started. The resulting images can be obtained in `onActivtyResult` if the `resultCode` is `RESULT_OK`. The images are stored in the static field `PhotoFaceCaptureActivity.images`. When starting activity, three string extras may be passed: upperText - text displayed above face placeholder, lowerText - text displayed below face placeholder, recordingHint - text displayed below face placeholder, that replaces lowerText after clicking camera button. Each of the extras may be omitted - no text will be displayed in destined place. Remember to add `PhotoFaceCaptureActivity` to your application's manifest file.
+
+```xml
+<activity android:name="com.aimbrain.sdk.faceCapture.PhotoFaceCaptureActivity"/>
+```
+
 ```java
 //...
-Intent intent = new Intent(this, FaceCaptureActivity.class);
+Intent intent = new Intent(this, PhotoFaceCaptureActivity.class);
 intent.putExtra("upperText", upperText);
 intent.putExtra("lowerText", lowerText);
-startActivityForResult(intent, requestCode);
+intent.putExtra("recordingHint", recordingHint);
+startActivityForResult(intent, photoRequestCode);
 //...
 
 protected void onActivityResult(int requestCode, int resultCode, Intent data) {
   super.onActivityResult(requestCode, resultCode, data);
-  if(resultCode == RESULT_OK){
-    this.images = FaceCaptureActivity.images;
+  if(requestCode == photoRequestCode && resultCode == RESULT_OK){
+    this.images = PhotoFaceCaptureActivity.images;
+  }
+}
+```
+
+
+## Recording video of user's face for liveliness detection
+In order to record video containing user's face  `VideoFaceCaptureActivity` has to be started. The result can be obtained in `onActivtyResult` if result code is `RESULT_OK` using static field: `VideoFaceCaptureActivity.video`. When starting activity, three string extras may be passed: upperText - text displayed above face placeholder, lowerText - text displayed below face placeholder, recordingHint - text displayed below face placeholder, that replaces lowerText after clicking camera button. Each of the extras may be omitted - no text will be displayed in destined place. Remember to add `VideoFaceCaptureActivity` to your application's manifest file.
+
+```xml
+<activity android:name="com.aimbrain.sdk.faceCapture.VideoFaceCaptureActivity"/>
+```
+
+```java
+//...
+Intent intent = new Intent(this, VideoFaceCaptureActivity.class);
+intent.putExtra("upperText", upperText);
+intent.putExtra("lowerText", lowerText);
+intent.putExtra("durationMillis", 2000);
+intent.putExtra("recordingHint", recordingHint);
+startActivityForResult(intent, videoRequestCode);
+//...
+
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+  super.onActivityResult(requestCode, resultCode, data);
+  if(requestCode == videoRequestCode && resultCode == RESULT_OK){
+    this.video = VideoFaceCaptureActivity.video;
   }
 }
 
@@ -203,9 +249,9 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 
 ## Authenticating with the facial module
 In order to authenticate with the facial module use the `sendProvidedPhotosToAuthenticate` method of the `Manager` class.
-An array of cropped images of the face in Bitmap format is passed as the parameter.
+An array of cropped images of the face in Bitmap format or video containing face is passed as the parameter.
 ```java
-Manager.getInstance().sendProvidedPhotosToAuthenticate(facialImages, new PhotosAuthenticateCallback() {
+Manager.getInstance().sendProvidedFaceCapturesToAuthenticate(PhotosFaceCaptureActivity.images, new FaceCapturesAuthenticateCallback() {
 
   @Override
   public void success(FaceAuthenticateModel faceAuthenticateModel) {
@@ -216,19 +262,31 @@ Manager.getInstance().sendProvidedPhotosToAuthenticate(facialImages, new PhotosA
   public void failure(VolleyError volleyError) {
 
   }
+});
+```
+
+```java
+Manager.getInstance().sendProvidedFaceCapturesToAuthenticate(VideoFaceCaptureActivity.video, new FaceCapturesAuthenticateCallback() {
 
   @Override
-  public void beforeSendRequest() {
+  public void success(FaceAuthenticateModel faceAuthenticateModel) {
+
+  }
+
+  @Override
+  public void failure(VolleyError volleyError) {
 
   }
 });
 ```
 
+On success, the FaceAuthenticateModel object contains a score, accessible by calling `getScore()` and a liveliness measure, accessible by calling `getLiveliness()`. In case of sending images, the liveliness will always return 0.0.
+
 ## Enrolling with the facial module
-Enrolling with the facial module is done by calling the `sendProvidedPhotosToEnroll` method of the `Manager` class.
-An array of cropped images of the face in Bitmap format is passed as the parameter.
+Enrolling with the facial module is done by calling the `sendProvidedFaceCapturesToEnroll ` method of the `Manager` class.
+An array of cropped images of the face in Bitmap format or video containing face is passed as the parameter.
 ```java
-Manager.getInstance().sendProvidedPhotosToEnroll(facialImages, new PhotosEnrollCallback() {
+Manager.getInstance().sendProvidedFaceCapturesToEnroll(PhotoFaceCaptureActivity.images, new FaceCapturesEnrollCallback() {
   @Override
   public void success(FaceEnrollModel faceEnrollModel) {
 
@@ -236,11 +294,21 @@ Manager.getInstance().sendProvidedPhotosToEnroll(facialImages, new PhotosEnrollC
 
   @Override
   public void failure(VolleyError volleyError) {
+
+  }
+});
+```
+
+```java
+Manager.getInstance().sendProvidedFaceCapturesToEnroll(VideoFaceCaptureActivity.video, new FaceCapturesEnrollCallback() {
+  @Override
+  public void success(FaceEnrollModel faceEnrollModel) {
+
   }
 
   @Override
-  public void beforeSendRequest() {
-    ...
+  public void failure(VolleyError volleyError) {
+
   }
 });
 ```
@@ -261,3 +329,4 @@ Manager.getInstance().compareFacesPhotos(facialImages1, facialImages2, new FaceC
   }
 });
 ```
+On success, the FaceCompareModel object contains a similarity, accessible by calling `getSimilarity()` and a two liveliness measures, accessible by calling `getFirstLiveliness()` and `getSecondLiveliness()`. In case of sending images, the liveliness will always return 0.0.

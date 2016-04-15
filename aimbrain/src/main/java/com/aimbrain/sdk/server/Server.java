@@ -253,7 +253,7 @@ public class Server {
         }
     }
 
-    public void sendProvidedPhotos(StringListDataModel photos, final PhotosCallback callback, FaceActions faceAction)  throws InternalException, ConnectException, SessionException {
+    public void sendProvidedFaceCaptures(StringListDataModel photos, final FaceCapturesCallback callback, FaceActions faceAction)  throws InternalException, ConnectException, SessionException {
         try {
             if(isOnline()) {
                 if(session != null) {

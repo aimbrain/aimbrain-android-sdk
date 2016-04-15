@@ -2,8 +2,6 @@ package com.aimbrain.sdk.AMBNApplication;
 
 import android.app.Application;
 
-
-
 /**
  * In order to integrate library into the project this class (or its descendant) should be used as an application class.
  * When extending this class, remember to call super.onCreate() in your onCreate() callback.

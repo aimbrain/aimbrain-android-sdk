@@ -4,7 +4,7 @@ public class SessionModel {
 
     public final static int NOT_ENROLLED = 0;
     public final static int ENROLLED = 1;
-    public final static int UNAVAILABLE = 2;
+    public final static int BUILDING = 2;
 
     private String sessionId;
     private int faceStatus;

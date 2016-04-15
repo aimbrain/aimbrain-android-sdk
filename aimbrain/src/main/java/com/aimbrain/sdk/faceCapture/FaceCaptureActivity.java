@@ -1,50 +1,48 @@
 package com.aimbrain.sdk.faceCapture;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.hardware.Camera;
-import android.media.AudioManager;
-import android.media.SoundPool;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.aimbrain.aimbrain.R;
-import com.aimbrain.sdk.server.FaceActions;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
+import com.aimbrain.sdk.array.Arrays;
 
 /**
- * This activty allows to capture face images.
- * The result can obtained in  <code>onActivityResult</code> method from  <code>FaceCaptureActivity.images</code> static field.
- *
+ * This activty allows to display camera preview. Subclasses may record video or capture images by
+ * overrding <code>captureData</code> method.
+ * The result can be obtained with use of <code>onActivityResult</code> method.
  */
-public class FaceCaptureActivity extends Activity {
+
+public abstract class FaceCaptureActivity extends Activity {
+
     /**
      * specify text in upper hint view on camera overlay
      */
@@ -54,101 +52,98 @@ public class FaceCaptureActivity extends Activity {
      */
     public static final String EXTRA_LOWER_TEXT = "lowerText";
     /**
-     * specify number of images taken. Default is 3
+     * specify text in lower hint view on camera overlay while capturing face
      */
-    public static final String EXTRA_BATCH_SIZE = "batchSize";
+    public static final String RECORDING_HINT = "recordingHint";
     /**
-     * specify delay in ms after each photo. Default is 300
-     */
-    public static final String EXTRA_DELAY = "delay";
+    * Proportion of width for overlay and bounding box
+    */
+    public static final double BOX_WIDTH = 0.5;
 
     /**
-     * Array of taken images. Access this field in <code>onActivityResult</code>
-     */
-    public static ArrayList<Bitmap> images;
-    private SurfaceView preview;
-    private SurfaceHolder previewHolder;
-    private SurfaceHolder overlaySurfaceHolder;
-    private Camera camera;
-    private boolean inPreview;
-    private Bitmap bmp;
-    private static Bitmap mutableBitmap;
-    private LayoutInflater controlInflater;
-    private DisplayMetrics windowSize = new DisplayMetrics();
-    private OverlaySurfaceView overlaySurface;
-    private ExecutorService adjustPhotosExecutor;
-    private int photoTakenAmount = 0;
-    private TextView lowerTextView;
-    private TextView upperTextView;
+    * Ration of height and width for overlay and bounding box
+    */
+    public static final double BOX_RATIO = 1.5;
+    protected static final int PERMISSIONS_REQUEST_CREATE = 2211;
+    protected static final int PERMISSIONS_REQUEST_RESUME = 2212;
+    protected static final int PERMISSIONS_REQUEST_CAMERA_BUTTON = 2213;
 
-    private int batchSize;
-    private int delay;
-    private RelativeLayout lowerTextRelativeLayout;
-    private RelativeLayout upperTextRelativeLayout;
-    private ImageButton photoButton;
+
+
+    protected SurfaceView preview;
+    protected SurfaceHolder previewHolder;
+    protected SurfaceHolder overlaySurfaceHolder;
+    protected Camera camera;
+    protected boolean inPreview;
+    protected LayoutInflater controlInflater;
+    protected DisplayMetrics windowSize = new DisplayMetrics();
+    protected OverlaySurfaceView overlaySurface;
+    protected TextSwitcher lowerTextSwitcher;
+    protected TextView upperTextView;
+    protected RelativeLayout lowerTextRelativeLayout;
+    protected RelativeLayout upperTextRelativeLayout;
+    protected ImageButton captureButton;
+    protected ProgressBar progressBar;
+    protected String recordingHint;
+    private boolean requestPermissionPending;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setScreenParameters();
         setContentView(R.layout.activity_face_capture);
-        setupCameraPreview();
         getWindow().getWindowManager().getDefaultDisplay().getMetrics(windowSize);
+        requestPermissionPending = false;
+        if (!requestPermissionsNeeded(PERMISSIONS_REQUEST_CREATE)) {
+            createActivityWithPermissions();
+        }
+    }
+
+    protected boolean requestPermissionsNeeded(int requestCode) {
+        if (!permissionsGranted(getRequestedPermissions(requestCode))) {
+            if (!requestPermissionPending) {
+                requestPermissionPending = true;
+                ActivityCompat.requestPermissions(this,
+                        getRequestedPermissions(requestCode),
+                        requestCode);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    protected String[] getRequestedPermissions(int requestCode) {
+        return new String[]{Manifest.permission.CAMERA};
+    }
+
+    private void createActivityWithPermissions() {
+        setupCameraPreview();
+        setupOverlay();
         String upperText = getIntent().getStringExtra(EXTRA_UPPER_TEXT);
         String lowerText = getIntent().getStringExtra(EXTRA_LOWER_TEXT);
-        batchSize = getIntent().getIntExtra(EXTRA_BATCH_SIZE, 3);
-        delay = getIntent().getIntExtra(EXTRA_DELAY, 300);
-
-        setupOverlay(upperText, lowerText);
-        photoButton = (ImageButton) findViewById(R.id.photoButton);
+        recordingHint = getIntent().getStringExtra(RECORDING_HINT);
+        setupOverlayTexts(upperText, lowerText);
     }
 
-    private void setupOverlay(String upperText, String lowerText) {
-        controlInflater = LayoutInflater.from(getBaseContext());
-        View viewControl = controlInflater.inflate(R.layout.camera_overlay, null);
-        ViewGroup.LayoutParams layoutParamsControl
-                = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        this.addContentView(viewControl, layoutParamsControl);
-
-        overlaySurface = (OverlaySurfaceView) findViewById(R.id.overlaySurfaceView);
-        overlaySurfaceHolder = overlaySurface.getHolder();
-
-        upperTextRelativeLayout = (RelativeLayout) findViewById(R.id.upperTextRelativeLayout);
-        upperTextView = (TextView) findViewById(R.id.upperTextView);
-        if (upperText != null) {
-            upperTextView.setText(upperText);
-            upperTextView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
+    protected boolean permissionsGranted(String[] requestedPermissions) {
+        for(String requestedPermission : requestedPermissions)
+        {
+            if (ContextCompat.checkSelfPermission(this, requestedPermission) != PackageManager.PERMISSION_GRANTED)
+                return false;
         }
-
-        lowerTextRelativeLayout = (RelativeLayout) findViewById(R.id.lowerTextRelativeLayout);
-        lowerTextView = (TextView) findViewById(R.id.lowerTextView);
-        if (lowerText != null) {
-            lowerTextView.setText(lowerText);
-            lowerTextView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
-        }
-
-        ProgressBar progressBar = (ProgressBar) this.findViewById(R.id.photoProgressBar);
-        progressBar.setVisibility(View.GONE);
+        return true;
     }
-
-    private void setupCameraPreview() {
-        preview = (SurfaceView) findViewById(R.id.faceCaptureSurface);
-        previewHolder = preview.getHolder();
-        previewHolder.addCallback(surfaceCallback);
-    }
-
-    private void setScreenParameters() {
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-    }
-
 
     @Override
     public void onResume() {
         super.onResume();
+        if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_RESUME)) {
+            setupCamera();
+        }
+
+    }
+
+    protected void setupCamera() {
         try {
             camera = Camera.open(getFrontCameraIndex());
             setupSurfaceViewsSize();
@@ -166,23 +161,50 @@ public class FaceCaptureActivity extends Activity {
                             FaceCaptureActivity.this.finish();
                         }
                     })
+                    .setCancelable(false)
                     .show();
         }
-
-
     }
 
-    private void setupSurfaceViewsSize() {
-        if (camera != null) {
-            Camera.Size cameraSize = getBestPreviewSize(windowSize.widthPixels, windowSize.heightPixels, camera.getParameters());
-            float sizeRatio = (float) cameraSize.width / (float) cameraSize.height;
-            previewHolder.setFixedSize(windowSize.widthPixels, (int) (windowSize.widthPixels * sizeRatio));
-            overlaySurfaceHolder.setFixedSize(windowSize.widthPixels, (int) (windowSize.widthPixels * sizeRatio));
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_REQUEST_CREATE:
+            case PERMISSIONS_REQUEST_RESUME: {
+                if (grantResults.length > 0
+                        && !Arrays.contains(grantResults, PackageManager.PERMISSION_DENIED)) {
+                    requestPermissionPending = false;
+                    if(requestCode == PERMISSIONS_REQUEST_RESUME)
+                        setupCamera();
+                    else if(requestCode == PERMISSIONS_REQUEST_CREATE)
+                        createActivityWithPermissions();
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setTitle("Error")
+                            .setMessage("Face authentication needs requested permissions granted.")
+                            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    requestPermissionPending = false;
+                                    setResult(RESULT_CANCELED);
+                                    FaceCaptureActivity.this.finish();
+                                }
+                            })
+                            .setCancelable(false)
+                            .show();
+                }
+                return;
+            }
+
         }
     }
 
     @Override
     public void onPause() {
+        releaseCamera();
+        super.onPause();
+    }
+
+    protected void releaseCamera() {
         if (camera != null) {
             if (inPreview) {
                 camera.stopPreview();
@@ -191,13 +213,59 @@ public class FaceCaptureActivity extends Activity {
             camera = null;
         }
         inPreview = false;
-        super.onPause();
+    }
+
+    protected void setupSurfaceViewsSize() {
+        if (camera != null) {
+            Camera.Size cameraSize = getBestPreviewSize(windowSize.widthPixels, windowSize.heightPixels, camera.getParameters());
+            float sizeRatio = (float) cameraSize.width / (float) cameraSize.height;
+            previewHolder.setFixedSize(windowSize.widthPixels, (int) (windowSize.widthPixels * sizeRatio));
+            overlaySurfaceHolder.setFixedSize(windowSize.widthPixels, (int) (windowSize.widthPixels * sizeRatio));
+        }
+    }
+
+    public void refreshOverlayElements() {
+        RelativeLayout.LayoutParams lowerTextLayoutParams = (RelativeLayout.LayoutParams) lowerTextRelativeLayout.getLayoutParams();
+        lowerTextLayoutParams.height = getLowerTextHeight();
+        lowerTextLayoutParams.setMargins(0, 0, 0, getLowerTextBottomMargin());
+        lowerTextSwitcher.requestLayout();
+        RelativeLayout.LayoutParams upperTextLayoutParams = (RelativeLayout.LayoutParams) upperTextView.getLayoutParams();
+        upperTextLayoutParams.height = (int) overlaySurface.getMaskBounds().top;
+        upperTextView.requestLayout();
+        RelativeLayout.LayoutParams photoButtonLayoutParams = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
+        photoButtonLayoutParams.setMargins(0, 0, 0, getPhotoButtonBottomMargin());
+    }
+
+    private int getLowerTextHeight() {
+        return windowSize.heightPixels - (int) overlaySurface.getMaskBounds().top - (int) overlaySurface.getMaskBounds().height() - getLowerTextBottomMargin();
+    }
+
+    private int getLowerTextBottomMargin() {
+        int margin_size = 10 + windowSize.heightPixels - overlaySurfaceHolder.getSurfaceFrame().height();
+        int photoButtonSpinnerTop = getPhotoButtonBottomMargin() + captureButton.getHeight() + 12;
+        return margin_size > photoButtonSpinnerTop ? margin_size : photoButtonSpinnerTop;
+    }
+
+    private int getPhotoButtonBottomMargin() {
+        return (int) (25.0f * (float) windowSize.heightPixels / 1280);
+    }
+
+    protected Integer getFrontCameraIndex() {
+        Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+        int cameraCount = Camera.getNumberOfCameras();
+        for (int camIdx = 0; camIdx < cameraCount; camIdx++) {
+            Camera.getCameraInfo(camIdx, cameraInfo);
+            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                return camIdx;
+            }
+        }
+        return 0;
     }
 
     private Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters) {
         Camera.Size result = null;
         for (Camera.Size size : parameters.getSupportedPreviewSizes()) {
-            if (size.width <= width && size.height <= height) {
+            if (size.width <= height && size.height <= width) {
                 if (result == null) {
                     result = size;
                 } else {
@@ -212,37 +280,92 @@ public class FaceCaptureActivity extends Activity {
         return (result);
     }
 
-    public void refreshOverlayElements() {
-        RelativeLayout.LayoutParams lowerTextLayoutParams = (RelativeLayout.LayoutParams) lowerTextRelativeLayout.getLayoutParams();
-        lowerTextLayoutParams.height = getLowerTextHeight();
-        lowerTextLayoutParams.setMargins(0, 0, 0, getLowerTextBottomMargin());
-        RelativeLayout.LayoutParams upperTextLayoutParams = (RelativeLayout.LayoutParams) upperTextView.getLayoutParams();
-        upperTextLayoutParams.height = (int)overlaySurface.getMaskBounds().top;
+    private void setupOverlay() {
+        controlInflater = LayoutInflater.from(getBaseContext());
+        View viewControl = controlInflater.inflate(R.layout.camera_overlay, null);
+        ViewGroup.LayoutParams layoutParamsControl
+                = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        this.addContentView(viewControl, layoutParamsControl);
 
-        RelativeLayout.LayoutParams photoButtonLayoutParams = (RelativeLayout.LayoutParams) photoButton.getLayoutParams();
-        photoButtonLayoutParams.setMargins(0, 0, 0, getPhotoButtonBottomMargin());
+        overlaySurface = (OverlaySurfaceView) findViewById(R.id.overlaySurfaceView);
+        overlaySurfaceHolder = overlaySurface.getHolder();
+        upperTextRelativeLayout = (RelativeLayout) findViewById(R.id.upperTextRelativeLayout);
+        upperTextView = (TextView) findViewById(R.id.upperTextView);
+        lowerTextRelativeLayout = (RelativeLayout) findViewById(R.id.lowerTextRelativeLayout);
+        lowerTextSwitcher = (TextSwitcher) findViewById(R.id.lowerTextSwitcher);
+
+        TextView lowerTextView = new TextView(this);
+        lowerTextView.setTextAppearance(this, android.R.style.TextAppearance_Medium);
+        lowerTextView.setGravity(Gravity.CENTER);
+        lowerTextView.setTextColor(Color.WHITE);
+        lowerTextView.setMaxLines(2);
+        lowerTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        lowerTextView.setEllipsize(TextUtils.TruncateAt.END);
+
+        TextView recordingHintTextView = new TextView(this);
+        recordingHintTextView.setTextAppearance(this, android.R.style.TextAppearance_Medium);
+        recordingHintTextView.setGravity(Gravity.CENTER);
+        recordingHintTextView.setTextColor(Color.WHITE);
+        recordingHintTextView.setMaxLines(2);
+        recordingHintTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25);
+        recordingHintTextView.setEllipsize(TextUtils.TruncateAt.END);
+
+        lowerTextSwitcher.addView(recordingHintTextView);
+        lowerTextSwitcher.addView(lowerTextView);
+        lowerTextSwitcher.setInAnimation(AnimationUtils.loadAnimation(this,android.R.anim.fade_in));
+
+        progressBar = (ProgressBar) this.findViewById(R.id.photoProgressBar);
+        progressBar.setVisibility(View.GONE);
+        captureButton = (ImageButton) findViewById(R.id.photoButton);
     }
 
-    private int getLowerTextHeight() {
-        return windowSize.heightPixels - (int)overlaySurface.getMaskBounds().top - (int) overlaySurface.getMaskBounds().height() - getLowerTextBottomMargin();
+    private void setupOverlayTexts(String upperText, String lowerText){
+        if (upperText != null) {
+            upperTextView.setText(upperText);
+            upperTextView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
+        }
+
+        if (lowerText == null) {
+            lowerText = "";
+        }
+        lowerTextSwitcher.setText(lowerText);
     }
 
-    private int getLowerTextBottomMargin() {
-        int margin_size =  10 + windowSize.heightPixels - overlaySurfaceHolder.getSurfaceFrame().height();
-        int photoButtonSpinnerTop = getPhotoButtonBottomMargin() + photoButton.getHeight() + 12;
-        return margin_size > photoButtonSpinnerTop ? margin_size : photoButtonSpinnerTop;
+    private void setupCameraPreview() {
+        preview = (SurfaceView) findViewById(R.id.faceCaptureSurface);
+        previewHolder = preview.getHolder();
+        previewHolder.addCallback(surfaceCallback);
     }
 
-    private int getPhotoButtonBottomMargin() {
-        return (int)(25.0f * (float)windowSize.heightPixels/1280);
+    private void setScreenParameters() {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
     }
 
     SurfaceHolder.Callback surfaceCallback = new SurfaceHolder.Callback() {
         public void surfaceCreated(SurfaceHolder holder) {
+
+        }
+
+        public void surfaceChanged(SurfaceHolder holder,
+                                   int format, int width,
+                                   int height) {
             try {
                 if (camera != null) {
-                    camera.setDisplayOrientation(90);
+                    camera.setDisplayOrientation(getCameraDisplayOrientation(getFrontCameraIndex()));
                     camera.setPreviewDisplay(previewHolder);
+                    Camera.Parameters parameters = camera.getParameters();
+                    Camera.Size size = getBestPreviewSize(width, height,
+                            parameters);
+                    if (size != null) {
+                        parameters.setPreviewSize(size.width, size.height);
+                        camera.setParameters(parameters);
+                        camera.startPreview();
+                        inPreview = true;
+                    }
                 }
             } catch (Throwable t) {
                 Log.e("surfaceCallback",
@@ -252,170 +375,60 @@ public class FaceCaptureActivity extends Activity {
             }
         }
 
-        public void surfaceChanged(SurfaceHolder holder,
-                                   int format, int width,
-                                   int height) {
-            if (camera != null) {
-                Camera.Parameters parameters = camera.getParameters();
-                Camera.Size size = getBestPreviewSize(width, height,
-                        parameters);
-                if (size != null) {
-                    parameters.setPreviewSize(size.width, size.height);
-                    camera.setParameters(parameters);
-                    camera.startPreview();
-                    inPreview = true;
-                }
-            }
-        }
-
         public void surfaceDestroyed(SurfaceHolder holder) {
             // no-op
         }
     };
 
-    public Bitmap onPictureTake(byte[] data) {
-        bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-        mutableBitmap = bmp.copy(Bitmap.Config.ARGB_8888, true);
-        return PictureManager.getCroppedAndRotatedPhoto(mutableBitmap, overlaySurface.getMaskBounds());
-    }
-
-    private Integer getFrontCameraIndex() {
-        Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
-        int cameraCount = Camera.getNumberOfCameras();
-        for (int camIdx = 0; camIdx < cameraCount; camIdx++) {
-            Camera.getCameraInfo(camIdx, cameraInfo);
-            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                return camIdx;
-            }
-        }
-        return 0;
-    }
-
     public void photoButtonPressed(View view) {
+        if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
+            resumePhotoButtonPressedWithPermissions(view);
+        }
+
+    }
+
+    private void resumePhotoButtonPressedWithPermissions(View view) {
         ImageButton photoButton = (ImageButton) view;
         photoButton.setEnabled(false);
         photoButton.setClickable(false);
-        takePhotos(this.batchSize, this.delay);
-    }
-
-    private void takePhotos(final int photosAmount, final int photoInterval) {
-        Thread thread = new Thread() {
-            ArrayList<Bitmap> photos = new ArrayList<>();
-
-            @Override
-            public void run() {
-                super.run();
-                FaceCaptureActivity.this.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        ProgressBar progressBar = (ProgressBar) FaceCaptureActivity.this.findViewById(R.id.photoProgressBar);
-                        progressBar.setVisibility(View.VISIBLE);
-                    }
-                });
-                terminateExecutor(photoInterval, photosAmount);
-                adjustPhotosExecutor = Executors.newFixedThreadPool(photosAmount);
-                final List<FutureTask<Bitmap>> pictureTasks = new ArrayList<>();
-                try {
-                    photoTakenAmount = 0;
-                    takePicture(pictureTasks);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Log.d("Take photos", e.getMessage());
-                }
-            }
-
-            private void takePicture(final List<FutureTask<Bitmap>> pictureTasks) throws InterruptedException {
-                if(photoTakenAmount < photosAmount) {
-                    try {
-                    if (camera == null) {
-                        Camera.open(getFrontCameraIndex());
-                    }
-                    camera.startPreview();
-                    camera.takePicture(shutterCallback, null, new Camera.PictureCallback() {
-                        @Override
-                        public void onPictureTaken(final byte[] data, final Camera camera) {
-                            try {
-                                sleep(photoInterval);
-                                photoTakenAmount++;
-                                takePicture(pictureTasks);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            FutureTask getPicture = new FutureTask<Bitmap>(new Callable<Bitmap>() {
-                                @Override
-                                public Bitmap call() throws Exception {
-                                    return onPictureTake(data);
-                                }
-                            });
-                            pictureTasks.add(getPicture);
-                            adjustPhotosExecutor.execute(getPicture);
-                            if (photoTakenAmount == photosAmount) {
-                                collectAndFinishWithPhotos(pictureTasks);
-                            }
-                        }
-                        });
-                    } catch (RuntimeException e) {
-                        if (camera != null) {
-                            camera.release();
-                            camera = null;
-                        }
-                        new AlertDialog.Builder(FaceCaptureActivity.this)
-                                .setTitle("Error")
-                                .setMessage("Camera unavailable.")
-                                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        FaceCaptureActivity.this.finish();
-                                    }
-                                })
-                                .show();
-                    }
-                }
-
-            }
-
-            private void collectAndFinishWithPhotos(List<FutureTask<Bitmap>> pictureTasks) {
-
-                adjustPhotosExecutor.shutdown();
-                for(FutureTask<Bitmap> pictureTask : pictureTasks) {
-
-                    try {
-                        photos.add(pictureTask.get());
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-                FaceCaptureActivity.images = photos;
-                setResult(RESULT_OK);
-                finish();
-            }
-        };
-        thread.start();
-    }
-
-    private void terminateExecutor(int photoInterval, int photosAmount) {
-        if (adjustPhotosExecutor != null && !adjustPhotosExecutor.isTerminated()) {
-            adjustPhotosExecutor.shutdown();
-            try {
-                adjustPhotosExecutor.awaitTermination(photoInterval * photosAmount, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            if (!adjustPhotosExecutor.isTerminated()) {
-                adjustPhotosExecutor.shutdownNow();
-            }
+        if(recordingHint != null) {
+            lowerTextSwitcher.setText(recordingHint);
         }
+        progressBar.setVisibility(View.VISIBLE);
+        captureData();
     }
 
-    Camera.ShutterCallback shutterCallback = new Camera.ShutterCallback() {
-        @Override
-        public void onShutter() {
-            SoundPool soundPool = new SoundPool(1, AudioManager.STREAM_NOTIFICATION, 0);
-            int shutterSound = soundPool.load(FaceCaptureActivity.this, R.raw.camera_shutter_click, 0);
-            soundPool.play(shutterSound, 1f, 1f, 0, 0, 1);
+    protected int getCameraDisplayOrientation(int cameraId) {
+        android.hardware.Camera.CameraInfo info =
+                new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(cameraId, info);
+        int rotation = FaceCaptureActivity.this.getWindowManager().getDefaultDisplay()
+                .getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
         }
-    };
 
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        return result;
+    }
+
+    protected abstract void captureData();
 }

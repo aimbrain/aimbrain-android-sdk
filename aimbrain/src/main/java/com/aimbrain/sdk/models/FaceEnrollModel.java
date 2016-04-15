@@ -1,18 +1,15 @@
 package com.aimbrain.sdk.models;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 public class FaceEnrollModel {
 
-    private int imagesCount;
+    private int correctCapturesCount;
 
-    public FaceEnrollModel(int imagesCount) {
-        this.imagesCount = imagesCount;
+    public FaceEnrollModel(int correctCapturesCount) {
+        this.correctCapturesCount = correctCapturesCount;
     }
 
-    public int getImagesCount() {
-        return imagesCount;
+    public int getCorrectCapturesCount() {
+        return correctCapturesCount;
     }
 
 }
