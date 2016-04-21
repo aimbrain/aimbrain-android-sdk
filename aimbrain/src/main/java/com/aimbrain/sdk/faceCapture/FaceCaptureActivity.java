@@ -137,6 +137,9 @@ public abstract class FaceCaptureActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+        View decorView = getWindow().getDecorView();
+        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        decorView.setSystemUiVisibility(uiOptions);
         if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_RESUME)) {
             setupCamera();
         }
@@ -227,13 +230,17 @@ public abstract class FaceCaptureActivity extends Activity {
     public void refreshOverlayElements() {
         RelativeLayout.LayoutParams lowerTextLayoutParams = (RelativeLayout.LayoutParams) lowerTextRelativeLayout.getLayoutParams();
         lowerTextLayoutParams.height = getLowerTextHeight();
-        lowerTextLayoutParams.setMargins(0, 0, 0, getLowerTextBottomMargin());
+        lowerTextLayoutParams.setMargins(0, getLowerTextTopMargin(), 0, 0);
         lowerTextSwitcher.requestLayout();
         RelativeLayout.LayoutParams upperTextLayoutParams = (RelativeLayout.LayoutParams) upperTextView.getLayoutParams();
         upperTextLayoutParams.height = (int) overlaySurface.getMaskBounds().top;
         upperTextView.requestLayout();
         RelativeLayout.LayoutParams photoButtonLayoutParams = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
         photoButtonLayoutParams.setMargins(0, 0, 0, getPhotoButtonBottomMargin());
+    }
+
+    private int getLowerTextTopMargin() {
+        return (int) overlaySurface.getMaskBounds().top + (int) overlaySurface.getMaskBounds().height();
     }
 
     private int getLowerTextHeight() {
@@ -262,7 +269,7 @@ public abstract class FaceCaptureActivity extends Activity {
         return 0;
     }
 
-    private Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters) {
+    protected Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters) {
         Camera.Size result = null;
         for (Camera.Size size : parameters.getSupportedPreviewSizes()) {
             if (size.width <= height && size.height <= width) {

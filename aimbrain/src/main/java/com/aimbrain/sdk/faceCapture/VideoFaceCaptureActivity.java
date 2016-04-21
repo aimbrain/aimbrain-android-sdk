@@ -7,12 +7,12 @@ import android.content.DialogInterface;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.util.TypedValue;
-import android.view.View;
+import android.util.Log;
 
 import com.aimbrain.sdk.file.Files;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -187,8 +187,14 @@ public class VideoFaceCaptureActivity extends FaceCaptureActivity {
     }
 
     @Override
+    protected Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters) {
+        return getVideoSize(parameters);
+    }
+
+
+    @Override
     protected String[] getRequestedPermissions(int requestCode) {
-        return new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        return new String[]{Manifest.permission.CAMERA};
     }
 
     private void releaseMediaRecorder(){
@@ -204,9 +210,21 @@ public class VideoFaceCaptureActivity extends FaceCaptureActivity {
     private Camera.Size getVideoSize(Camera.Parameters cameraParameters) {
         List<Camera.Size> previewsizes = cameraParameters.getSupportedPreviewSizes();
         List<Camera.Size> videosizes = cameraParameters.getSupportedVideoSizes();
+        Camera.Size videoSize;
         if(videosizes != null)
-            return(getClosestSize(videosizes, VIDEO_SIZE_HEIGHT, VIDEO_SIZE_WIDTH));
-        return getClosestSize(previewsizes, VIDEO_SIZE_HEIGHT, VIDEO_SIZE_WIDTH);
+            videoSize = getClosestSize(getCompatibleSizes(videosizes, previewsizes), VIDEO_SIZE_HEIGHT, VIDEO_SIZE_WIDTH);
+        else
+            videoSize = getClosestSize(previewsizes, VIDEO_SIZE_HEIGHT, VIDEO_SIZE_WIDTH);
+        Log.i("VIDEO_SIZE", "Video size chosen: "+ videoSize.height + "x" + videoSize.width);
+        return videoSize;
+    }
+
+    private List<Camera.Size> getCompatibleSizes(List<Camera.Size> videoSizes, List<Camera.Size> previewSizes) {
+        List<Camera.Size> intersection = new ArrayList<>(videoSizes);
+        intersection.retainAll(previewSizes);
+        if(intersection.isEmpty())
+            return videoSizes;
+        return intersection;
     }
 
     private Camera.Size getClosestSize(List<Camera.Size> sizes, int height, int width) {
@@ -221,7 +239,7 @@ public class VideoFaceCaptureActivity extends FaceCaptureActivity {
                 break;
             }
             int currentSizeArea = currentSize.height * currentSize.width;
-            if (Math.abs(currentSizeArea - searchedArea) > Math.abs(closestSizeArea - searchedArea))
+            if (Math.abs(currentSizeArea - searchedArea) < Math.abs(closestSizeArea - searchedArea))
                 closestSize = currentSize;
             closestSizeArea = closestSize.height * closestSize.width;
         }

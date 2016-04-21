@@ -52,7 +52,7 @@ public class Server {
 
     private static final int SOCKET_TIMEOUT = 10000; //[ms]
     private static final int MAX_RETRIES = 1;
-    private String appId;
+    private String apiKey;
     private String secret;
     private URL baseURL;
     private URL sessionURL;
@@ -66,8 +66,8 @@ public class Server {
 
 
 
-    public Server(String appId, String secret) {
-        this.appId = appId;
+    public Server(String apiKey, String secret) {
+        this.apiKey = apiKey;
         this.secret = secret;
         setUpRequestQueue();
         this.dataQueue = new LinkedList<>();
@@ -117,7 +117,7 @@ public class Server {
 
     private Map<String, String> getHeadersMap(JSONObject jsonObject, URL url) throws InvalidSignatureException {
         Map<String, String> headersMap = new HashMap<String, String>();
-        headersMap.put("X-aimbrain-apikey", this.appId);
+        headersMap.put("X-aimbrain-apikey", this.apiKey);
         headersMap.put("X-aimbrain-signature", String.valueOf(calculateSignature("POST", url.getPath(), jsonObject.toString(), this.secret)));
         return headersMap;
     }

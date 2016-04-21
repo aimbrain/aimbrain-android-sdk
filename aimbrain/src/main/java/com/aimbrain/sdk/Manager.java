@@ -169,11 +169,11 @@ public class Manager {
     /**
      * Allows for passing server configuration. Needs to be called before sending any data or creating session.
      *
-     * @param appId  application identifier
+     * @param apiKey  application identifier
      * @param secret secret defined for given application id
      */
-    public void configure(String appId, String secret) {
-        this.server = new Server(appId, secret);
+    public void configure(String apiKey, String secret) {
+        this.server = new Server(apiKey, secret);
     }
 
     /**
