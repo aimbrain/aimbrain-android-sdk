@@ -22,9 +22,11 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AnimationUtils;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
@@ -34,6 +36,10 @@ import android.widget.Toast;
 
 import com.aimbrain.aimbrain.R;
 import com.aimbrain.sdk.array.Arrays;
+import com.aimbrain.sdk.faceCapture.helpers.LayoutUtil;
+import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
+
+import java.util.List;
 
 /**
  * This activty allows to display camera preview. Subclasses may record video or capture images by
@@ -76,7 +82,7 @@ public abstract class FaceCaptureActivity extends Activity {
     protected Camera camera;
     protected boolean inPreview;
     protected LayoutInflater controlInflater;
-    protected DisplayMetrics windowSize = new DisplayMetrics();
+    protected VideoSize screenSize;
     protected OverlaySurfaceView overlaySurface;
     protected TextSwitcher lowerTextSwitcher;
     protected TextView upperTextView;
@@ -86,13 +92,14 @@ public abstract class FaceCaptureActivity extends Activity {
     protected ProgressBar progressBar;
     protected String recordingHint;
     private boolean requestPermissionPending;
+    ;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setScreenParameters();
         setContentView(R.layout.activity_face_capture);
-        getWindow().getWindowManager().getDefaultDisplay().getMetrics(windowSize);
+        screenSize = LayoutUtil.getScreenSize(this);
         requestPermissionPending = false;
         if (!requestPermissionsNeeded(PERMISSIONS_REQUEST_CREATE)) {
             createActivityWithPermissions();
@@ -137,9 +144,6 @@ public abstract class FaceCaptureActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
-        View decorView = getWindow().getDecorView();
-        int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-        decorView.setSystemUiVisibility(uiOptions);
         if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_RESUME)) {
             setupCamera();
         }
@@ -220,10 +224,10 @@ public abstract class FaceCaptureActivity extends Activity {
 
     protected void setupSurfaceViewsSize() {
         if (camera != null) {
-            Camera.Size cameraSize = getBestPreviewSize(windowSize.widthPixels, windowSize.heightPixels, camera.getParameters());
+            Camera.Size cameraSize = getBestPreviewSize(screenSize.width, screenSize.height, camera.getParameters());
             float sizeRatio = (float) cameraSize.width / (float) cameraSize.height;
-            previewHolder.setFixedSize(windowSize.widthPixels, (int) (windowSize.widthPixels * sizeRatio));
-            overlaySurfaceHolder.setFixedSize(windowSize.widthPixels, (int) (windowSize.widthPixels * sizeRatio));
+            previewHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
+            overlaySurfaceHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
         }
     }
 
@@ -244,17 +248,17 @@ public abstract class FaceCaptureActivity extends Activity {
     }
 
     private int getLowerTextHeight() {
-        return windowSize.heightPixels - (int) overlaySurface.getMaskBounds().top - (int) overlaySurface.getMaskBounds().height() - getLowerTextBottomMargin();
+        return screenSize.height - (int) overlaySurface.getMaskBounds().top - (int) overlaySurface.getMaskBounds().height() - getLowerTextBottomMargin();
     }
 
     private int getLowerTextBottomMargin() {
-        int margin_size = 10 + windowSize.heightPixels - overlaySurfaceHolder.getSurfaceFrame().height();
+        int margin_size = 10 + screenSize.height - overlaySurfaceHolder.getSurfaceFrame().height();
         int photoButtonSpinnerTop = getPhotoButtonBottomMargin() + captureButton.getHeight() + 12;
         return margin_size > photoButtonSpinnerTop ? margin_size : photoButtonSpinnerTop;
     }
 
     private int getPhotoButtonBottomMargin() {
-        return (int) (25.0f * (float) windowSize.heightPixels / 1280);
+        return (int) (25.0f * (float) screenSize.height / 1280);
     }
 
     protected Integer getFrontCameraIndex() {
@@ -284,6 +288,7 @@ public abstract class FaceCaptureActivity extends Activity {
                 }
             }
         }
+        Log.i("PREVIEW SIZE", "Chosen preview size: " + result.width + "x" + result.height);
         return (result);
     }
 
@@ -368,7 +373,10 @@ public abstract class FaceCaptureActivity extends Activity {
                     Camera.Size size = getBestPreviewSize(width, height,
                             parameters);
                     if (size != null) {
+                        PreviewManager.setPreviewTopBottomMargins(height, preview);
                         parameters.setPreviewSize(size.width, size.height);
+                        Camera.Size pictureSize = getPictureSize(size, parameters);
+                        parameters.setPictureSize(pictureSize.width, pictureSize.height);
                         camera.setParameters(parameters);
                         camera.startPreview();
                         inPreview = true;
@@ -386,6 +394,28 @@ public abstract class FaceCaptureActivity extends Activity {
             // no-op
         }
     };
+
+    private Camera.Size getPictureSize(Camera.Size previewSize, Camera.Parameters parameters) {
+        List<Camera.Size> supportedPictureSizes = parameters.getSupportedPictureSizes();
+        Camera.Size pictureSize = supportedPictureSizes.get(0);
+        float requiredRatio = (float)previewSize.width/(float)previewSize.height;
+        float bestFoundRatio = (float)pictureSize.width/(float)pictureSize.width;
+
+        for(Camera.Size currentSize : supportedPictureSizes)
+        {
+            float currentRatio = (float)currentSize.width/(float)currentSize.height;
+            if(Math.abs(currentRatio-requiredRatio) < Math.abs(currentRatio-bestFoundRatio) ||
+                    (Math.abs(currentRatio-requiredRatio) == Math.abs(currentRatio-bestFoundRatio) &&
+                            currentSize.width >= pictureSize.width &&
+                            currentSize.height >= pictureSize.width))
+            {
+                pictureSize =  currentSize;
+                bestFoundRatio = currentRatio;
+            }
+        }
+        Log.i("PICTURE SIZE", "Chosen picture size: "+ pictureSize.width +"x"+pictureSize.height);
+        return pictureSize;
+    }
 
     public void photoButtonPressed(View view) {
         if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
@@ -434,6 +464,7 @@ public abstract class FaceCaptureActivity extends Activity {
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
+        Log.d("FaceCaptureActivity", "result " + result);
         return result;
     }
 

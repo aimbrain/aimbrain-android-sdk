@@ -1,68 +1,102 @@
 package com.aimbrain.sdk.faceCapture;
 
-import android.Manifest;
+
+import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
+import android.app.Fragment;
 import android.content.DialogInterface;
-import android.hardware.Camera;
-import android.media.MediaRecorder;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Window;
+import android.view.WindowManager;
 
-import com.aimbrain.sdk.file.Files;
+import com.aimbrain.aimbrain.R;
+import com.aimbrain.sdk.array.Arrays;
+import com.aimbrain.sdk.faceCapture.fragments.Camera2Fragment;
+import com.aimbrain.sdk.faceCapture.fragments.CameraLegacyFragment;
+import com.aimbrain.sdk.faceCapture.fragments.AbstractCameraPermissionFragment;
+import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
+import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy.CameraChoice;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-/**
- * This activty allows to capture face videos.
- * The result can obtained in  <code>onActivityResult</code> method from  <code>VideoFaceCaptureActivity.video</code> static field.
- */
-public class VideoFaceCaptureActivity extends FaceCaptureActivity {
+public class VideoFaceCaptureActivity extends Activity implements AbstractCameraPermissionFragment.ActivityCallback {
+
+    public static final String EXTRA_DURATION_MILLIS = "durationMillis";
+    /**
+     * specify text in upper hint view on camera overlay
+     */
+    public static final String EXTRA_UPPER_TEXT = "upperText";
+    /**
+     * specify text in lower hint view on camera overlay
+     */
+    public static final String EXTRA_LOWER_TEXT = "lowerText";
+    /**
+     * specify text in lower hint view on camera overlay while capturing face
+     */
+    public static final String EXTRA_RECORDING_HINT = "recordingHint";
 
     /**
-     * specify video length in ms. Default is 2000
+     * Specify to force used camera api
      */
-    public static final String DURATION_MILLIS = "durationMillis";
-    private static final int TARGET_VIDEO_FPS = 24;
-    private static final int MAX_CONSTANT_VIDEO_FPS = 30;
-    private static final int VIDEO_SIZE_HEIGHT = 288;
-    private static final int VIDEO_SIZE_WIDTH = 352;
+    public static final String EXTRA_FORCE_CAMERA_API = "forceCameraApi";
+
+    /**
+     * Value for EXTRA_FORCE_CAMERA_API to use Camera API.
+     */
+    public static final String EXTRA_CAMERA_LEGACY = CameraChoice.CAMERA_LEGACY.name();
+
+    /**
+     * Value for EXTRA_FORCE_CAMERA_API to use Camera2 API.
+     */
+    public static final String EXTRA_CAMERA2 = CameraChoice.CAMERA2.name();
+
     public static byte[] video;
-    private int durationMillis;
-    private MediaRecorder mediaRecorder;
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setScreenParameters();
+        setContentView(R.layout.activity_video_capture);
 
-    MediaRecorder.OnInfoListener mediaRecorderInfoListener = new MediaRecorder.OnInfoListener() {
-        @Override
-        public void onInfo(MediaRecorder mr, int what, int extra) {
-            releaseMediaRecorder();
-            if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
-                try {
-                    video = Files.readAllBytes(openFileInput(Files.TMP_VIDEO_FILE_NAME));
-                    setResult(RESULT_OK);
-                    finish();
-                } catch (IOException e) {
-                    displayError("Unable to read saved video file.");
-                }
-            }
-            else if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED)
-            {
-                displayError("Maximum video file size reached.");
-            }
-            else
-            {
-                displayError("Unknown error.");
-            }
+        int durationMillis = getIntent().getIntExtra(EXTRA_DURATION_MILLIS, 2000);
+        String upperText = getIntent().getStringExtra(EXTRA_UPPER_TEXT);
+        String lowerText = getIntent().getStringExtra(EXTRA_LOWER_TEXT);
+        String recordingHint = getIntent().getStringExtra(EXTRA_RECORDING_HINT);
+
+        CameraChoice choice = CameraChoiceStrategy.chooseCamera(getApplicationContext());
+
+        String forceChoice = getIntent().getStringExtra(EXTRA_FORCE_CAMERA_API);
+        if (forceChoice != null) {
+            choice = CameraChoice.valueOf(forceChoice);
         }
 
-    };
+        Fragment cameraFragment;
+        if (choice == CameraChoice.CAMERA2) {
+            cameraFragment = Camera2Fragment.newInstance(upperText, lowerText,
+                    recordingHint, durationMillis);
+        } else {
+            cameraFragment = CameraLegacyFragment.newInstance(upperText, lowerText,
+                    recordingHint, durationMillis);
+        }
 
-    private void displayError(String message) {
+        getFragmentManager().beginTransaction()
+                .replace(R.id.content, cameraFragment)
+                .commit();
+    }
+
+    private void setScreenParameters() {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
+    @Override
+    public void displayErrorAndFinish(String error) {
         new AlertDialog.Builder(this)
                 .setTitle("Error")
-                .setMessage(message)
+                .setMessage(error)
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         setResult(RESULT_CANCELED);
@@ -73,176 +107,24 @@ public class VideoFaceCaptureActivity extends FaceCaptureActivity {
                 .show();
     }
 
-    MediaRecorder.OnErrorListener mediaRecorderErrorListener = new MediaRecorder.OnErrorListener() {
-
-        @Override
-        public void onError(MediaRecorder mr, int what, int extra) {
-            releaseMediaRecorder();
-            displayError("Unable to record video.");
-        }
-    };
-
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        durationMillis = getIntent().getIntExtra(DURATION_MILLIS, 2000);
+    public void setResultAndFinish(byte[] videoBytes) {
+        video = videoBytes;
+        setResult(RESULT_OK);
+        finish();
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        releaseMediaRecorder();
-    }
-
-    @Override
-    protected void captureData() {
-        captureVideo();
-    }
-
-    private void captureVideo() {
-        if (prepareVideoRecorder()) {
-            mediaRecorder.start();
-        } else {
-            releaseMediaRecorder();
-            displayError("Camera not ready. Unable to start recording video.");
-        }
-    }
-
-    private boolean prepareVideoRecorder(){
-        try {
-            Camera.Parameters cameraParameters = camera.getParameters();
-            Camera.Size optimalSize = getVideoSize(cameraParameters);
-            updateCaptureRate(TARGET_VIDEO_FPS, MAX_CONSTANT_VIDEO_FPS, cameraParameters);
-
-            mediaRecorder = new MediaRecorder();
-
-            camera.unlock();
-            mediaRecorder.setCamera(this.camera);
-            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            mediaRecorder.setOrientationHint((360 - getCameraDisplayOrientation(getFrontCameraIndex())) % 360);
-            mediaRecorder.setVideoSize(optimalSize.width, optimalSize.height);
-            mediaRecorder.setMaxDuration(durationMillis);
-            mediaRecorder.setVideoEncodingBitRate(502000);
-            mediaRecorder.setOutputFile(openFileOutput(Files.TMP_VIDEO_FILE_NAME, Context.MODE_PRIVATE).getFD());
-            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-            mediaRecorder.setOnInfoListener(mediaRecorderInfoListener);
-            mediaRecorder.setOnErrorListener(mediaRecorderErrorListener);
-            mediaRecorder.prepare();
-        } catch (IllegalStateException e) {
-            return false;
-        } catch (IOException e) {
-            return false;
-        }
-        return true;
-    }
-
-    private void updateCaptureRate(int targetFps, int maxConstantFps, Camera.Parameters cameraParameters) {
-        List<int[]> fpsRanges = cameraParameters.getSupportedPreviewFpsRange();
-        targetFps = targetFps * 1000;
-        maxConstantFps = maxConstantFps * 1000;
-
-        //last choice - first range from list
-        int [] chosenFpsRange = fpsRanges.get(Camera.Parameters.PREVIEW_FPS_MIN_INDEX);
-
-        //second worse choice - first range with min fps > videoFps
-        for(int[] currentRange : fpsRanges)
-        {
-            if(currentRange[0] > targetFps) {
-                chosenFpsRange = currentRange;
-                break;
-            }
-        }
-
-        //third worse choice - narrowest range containing targetFps
-        for(int[] currentRange : fpsRanges) {
-            if(currentRange[0] >= targetFps && currentRange[1] <= targetFps) {
-                if(chosenFpsRange[0] >= targetFps && chosenFpsRange[1] <= targetFps) {
-                    if(chosenFpsRange[1] - chosenFpsRange[0] > currentRange[1] - currentRange[0])
-                        chosenFpsRange = currentRange;
-                }
-                else {
-                    chosenFpsRange = currentRange;
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        Log.d("VideoActivity", "onRequestPermissionsResult in activity");
+        switch (requestCode) {
+            case AbstractCameraPermissionFragment.PERMISSIONS_REQUEST_CREATE:
+            case AbstractCameraPermissionFragment.PERMISSIONS_REQUEST_RESUME: {
+                if (grantResults.length > 0
+                        && Arrays.contains(grantResults, PackageManager.PERMISSION_DENIED)) {
+                    displayErrorAndFinish("Face authentication needs requested permissions granted.");
                 }
             }
         }
-
-        //best choice - find constant rate between videoFpsMin and videoFpsMax
-        for(int[] currentRange : fpsRanges) {
-            if (currentRange[0] == currentRange[1] &&
-                    currentRange[0] >= targetFps &&
-                    currentRange[0] <= maxConstantFps) {
-                chosenFpsRange = currentRange;
-                break;
-            }
-        }
-
-        cameraParameters.setPreviewFpsRange(chosenFpsRange[0], chosenFpsRange[1]);
-        camera.setParameters(cameraParameters);
-    }
-
-    @Override
-    protected Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters) {
-        return getVideoSize(parameters);
-    }
-
-
-    @Override
-    protected String[] getRequestedPermissions(int requestCode) {
-        return new String[]{Manifest.permission.CAMERA};
-    }
-
-    private void releaseMediaRecorder(){
-        if (mediaRecorder != null) {
-            mediaRecorder.reset();
-            mediaRecorder.release();
-            mediaRecorder = null;
-            if(camera != null)
-                camera.lock();
-        }
-    }
-
-    private Camera.Size getVideoSize(Camera.Parameters cameraParameters) {
-        List<Camera.Size> previewsizes = cameraParameters.getSupportedPreviewSizes();
-        List<Camera.Size> videosizes = cameraParameters.getSupportedVideoSizes();
-        Camera.Size videoSize;
-        if(videosizes != null)
-            videoSize = getClosestSize(getCompatibleSizes(videosizes, previewsizes), VIDEO_SIZE_HEIGHT, VIDEO_SIZE_WIDTH);
-        else
-            videoSize = getClosestSize(previewsizes, VIDEO_SIZE_HEIGHT, VIDEO_SIZE_WIDTH);
-        Log.i("VIDEO_SIZE", "Video size chosen: "+ videoSize.height + "x" + videoSize.width);
-        return videoSize;
-    }
-
-    private List<Camera.Size> getCompatibleSizes(List<Camera.Size> videoSizes, List<Camera.Size> previewSizes) {
-        List<Camera.Size> intersection = new ArrayList<>(videoSizes);
-        intersection.retainAll(previewSizes);
-        if(intersection.isEmpty())
-            return videoSizes;
-        return intersection;
-    }
-
-    private Camera.Size getClosestSize(List<Camera.Size> sizes, int height, int width) {
-        Camera.Size closestSize = sizes.get(0);
-        int searchedArea = height * width;
-        int closestSizeArea = closestSize.height * closestSize.width;
-        for(Camera.Size currentSize : sizes)
-        {
-            if (currentSize.width == width && currentSize.height == height)
-            {
-                closestSize = currentSize;
-                break;
-            }
-            int currentSizeArea = currentSize.height * currentSize.width;
-            if (Math.abs(currentSizeArea - searchedArea) < Math.abs(closestSizeArea - searchedArea))
-                closestSize = currentSize;
-            closestSizeArea = closestSize.height * closestSize.width;
-        }
-        return closestSize;
     }
 }
