@@ -1,12 +1,12 @@
 package com.aimbrain.sdk.models;
 
-public class FaceCompareModel {
-
+public class FaceCompareModel extends MetadataModel {
     private double similarity;
     private double firstLiveliness;
     private double secondLiveliness;
 
-    public FaceCompareModel(double similarity, double firstLiveliness, double secondLiveliness) {
+    public FaceCompareModel(double similarity, double firstLiveliness, double secondLiveliness, byte[] metadata) {
+        super(metadata);
         this.similarity = similarity;
         this.firstLiveliness = firstLiveliness;
         this.secondLiveliness = secondLiveliness;
@@ -23,5 +23,4 @@ public class FaceCompareModel {
     public double getSecondLiveliness() {
         return secondLiveliness;
     }
-
 }

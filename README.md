@@ -1,6 +1,7 @@
 # AimBrain SDK integration
 
 ## Permissions
+
 SDK requires the following permissions:
 
 `android.permission.INTERNET`
@@ -10,6 +11,7 @@ SDK requires the following permissions:
 Those permissions are included in SDK’s manifest (there is no need to include it into the application’s manifest)
 
 ## Gradle sync
+
 1. Download and extract module project.
 2. Add module to your project by selecting File -> New -> Import module.
 3. Select the directory where you’ve just extracted the source code and confirm.
@@ -17,9 +19,9 @@ Those permissions are included in SDK’s manifest (there is no need to include 
 5. Choose Select Project with Gradle Files.
 
 ## Integration (setting the application class)
+
 In order to integrate aimbrain SDK it is necessary to set up application name in project’s `AndroidManifest.xml`.
 If no `Application` class extensions are needed, use `com.aimbrain.sdk.AMBNApplication.AMBNApplication`, otherwise use your extension's name.
-
 
 ```xml
 <application android:name=“com.aimbrain.sdk.AMBNApplication.AMBNApplication”>
@@ -32,9 +34,34 @@ In order to communicate with the server, the application identifier and secret n
 Manager.getInstance().configure("AIMBRAIN_API_KEY", "AIMBRAIN_API_SECRET");
 ```
 
+## Request serialisation
+
+AimBrain SDK can be used in two modes, by sending data to AimBrain API directly or by serialising requests and submitting the data via server side integration.
+
+To serialise requests `Manager` must have configured session. For serialisation a configuration with session id value can be used.
+
+```java
+Manager.getInstance().configure("SESSION ID");
+```
+
+Methods with prefix ```getSerialized...``` can be called to retrieve serialized request data once session is set .  
+
+All serialisation calls return ```SerializedRequest``` object. The request data can be accessed via ```SerializedRequest``` method ```getRequestJSON()```.
+
+Please refer to server side integration documentation for serialised data processing details.  
+
+#Request metadata
+
+For some integration scenarios additional data may be required to be sent to server. 
+
+Such integration-defined information should be submitted by calling function overload with parameter ```metadata```.
+
+Integration-defined information is returned from server in response field ```metadata```. 
+
 # Sessions
 
 ## Starting a new session
+
 In order to communicate with the server, a session must be established. Assuming the appropriate configuration parameters were passed to the instance of the `Manager` class, a session can be established as shown in example.
 
 ```java
@@ -46,14 +73,14 @@ Manager.getInstance().createSession("userId", new SessionCallback() {
 });
 ```
 
-The returned SessionModel contains the following parameters:
+SessionModel returned contains the following parameters:
 * sessionId - string containing session id for use with other API requests to maintain session semantics.
 * faceStatus - status of the Facial Module for given user (see below).
 * behaviourStatus - status of the Facial Module for given user and device pair (see below).
 
 
-Values possible for faceStatus field:
-* 0 - User not enrolled - facial authentication not available, enrollment required.
+Values possible for faceStatus field: 
+* 0 - User not enrolled - facial authentication not available, enrollment required. 
 * 1 - User enrolled - facial authentication available
 * 2 - Building template - enrollment done, AimBrain is building user template and no further action is required.
 
@@ -63,9 +90,18 @@ Values possible for behaviourStatus field:
 
 The SessionModel object returned on successful session creation is stored within inner object of the Manager - there is no need to store this object in a separate variable. The created session will be used for communicating with server until the creation of another session.
 
+## Serialising a new session call
+
+To get serialised new session request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedCreateSession(userId, metadata, context)
+```
+
 # Behavioural module
 
 ## Starting data collection
+
 Data collection must be started manually, using `startCollectingData` method of the `Manager` class instance. `Window` object that is currently displayed on top needs to be passed as parameter.
 Example of starting data collection on `Activity` creation has been provided.
 
@@ -76,7 +112,8 @@ public class MainActivity extends AppCompatActivity {
     Manager.getInstance().startCollectingData(getWindow());
   }
 }
-```
+  ```
+  
 If data needs to be collected since the application creation, extend `AMBNApplication` class as shown in the example.
 
 ```java
@@ -87,19 +124,18 @@ public class MyApplication extends AMBNApplication {
     Manager.getInstance().startCollectingData(null);
   }
 }
-```
+  ```
 
 Remember to set up appropriate application name in project’s `AndroidManifest.xml`.
 
-
 ```xml
 <application android:name=“com.my.package.MyApplication”>
-```
+  ```
 
 Calling `startCollectingData` with `null` as a parameter results in starting data collection on the next activity start event.
 
-
 ## Adding Window to manager
+
 The process of collecting the data requires the `Manager` instance object to be notified about the changing of the top `Window` object. Window changes associated with the changing of the top Activity are handled automatically, however you have to manually notify `Manager` instance about any other window creation. For example, when a `Dialog` object is created, the `Manager` instance object needs to be notified in the manner shown in the example code.
 
 ```java
@@ -110,12 +146,14 @@ AlertDialog dialog = builder.show();
 // Notify Manager about changing top Window object
 Manager.getInstance().windowChanged(dialog.getWindow());
 
-```
+  ```
 
 ## Connecting to server
+
 Data collection is started when the application is created, however it is the programmer’s responsibility to take care of sending it to the server. The SDK has the following methods for this task.
 
 ### Sending data
+
 After creating a session, we can send data gathered for analysis to the server. To do so, call `submitCollectedData` method of the Manager’s class instance.
 
 ```java
@@ -126,11 +164,12 @@ Manager.getInstance().submitCollectedData(new ScoreCallback() {
     // a response from the server with the current score
   }
 });
-```
+  ```
 
 Server responses for data submission contain the current behavioural score. The `scoreModel` object contains the status (1 for learning, 0 for learned) and the current score as a double.
 
 ### Scheduling
+
 Object of the `Manager` class allows for easy scheduling of data submission with the use of `scheduleDataSubmission` method. The method may be called with the following parameters:
 `delay` - delay before the first submission in milliseconds
 `period` - period between data submissions in milliseconds
@@ -143,9 +182,18 @@ Manager.getInstance().scheduleDataSubmission(0, 10000, new ScoreCallback() {
     // Implement method called after successful data submission
   }
 });
+  ```
+  
+### Serialising behavioural data submission request
+
+To get serialised data submit request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedSubmitCollectedData(metadata)
 ```
 
 ### Getting the current score
+
 There is an option to get the current score from the server without sending any data. To do so use the `getCurrentScore` method of the `Manager` class instance.
 
 ```java
@@ -156,9 +204,18 @@ Manager.getInstance().getCurrentScore(new ScoreCallback() {
     // response from the server with the current score
   }
 });
+  ```
+  
+### Serialising current score request
+
+To get serialised data score request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedGetCurrentScore(metadata)
 ```
 
 ## Privacy guards
+
 In order to disable collecting data from specific views it is necessary to create a `PrivacyGuard` object with a `Set` of these views. Then this `PrivacyGuard` object has to be added to the `Manager` instance.
 
 ```java
@@ -167,25 +224,27 @@ HashSet<View> setWithIgnoredViews = new HashSet<>();
 setWithIgnoredViews.add(editTextToIgnore);
 PrivacyGuard privacyGuard = new PrivacyGuard(setWithIgnoredViews);
 Manager.getInstance().addPrivacyGuard(privacyGuard);
-```
+  ```
 
 For ignoring all views in the application a `true`  value has to be passed as the first parameter in the `PrivacyGuard` constructor.
 
 ```java
 PrivacyGuard privacyGuard = new PrivacyGuard(true);
 Manager.getInstance().addPrivacyGuard(privacyGuard);
-```
+  ```
 
 ### Sensitive view guards
+
 In some cases it is preferable to only obfuscate the element that is being interacted with while still getting most of the behavioural data (for example in a pin code with a custom keyboard). In this case, views should be added to the SensitiveViewGuard. All of the child views will also be considered as sensitive.
 
 ```java
 // All of the elements on the Window will be considered as sensitive
 SensitiveViewGuard.addView(getWindow().getDecorView());
-```
+  ```
 When the view is marked as sensitive, it's id is salted (with the salt stored localy) and hashed before sending and the global touch x and y coordinates are set to 0.
 
 ## Mapping view identifiers
+
 Collected data contains the touched view's path consisting of view identifiers, starting from the touched view up to the root view. All views with no identifiers defined are ignored while building this path.
 SDK allows for defining and customising view identifiers. If no identifier has been defined for a view (for example, in the layout xml file), the view identifier may be set as shown in the example.
 The use of `ViewIdMapper` class does not change actual identifiers - it only adds mappings used by the SDK.
@@ -197,6 +256,7 @@ ViewIdMapper.getInstance().putViewId(view, "myView");
 # Facial module
 
 ## Taking pictures of the user's face
+
 In order to take picture of the user's face the `PhotoFaceCaptureActivity` has to be started. The resulting images can be obtained in `onActivtyResult` if the `resultCode` is `RESULT_OK`. The images are stored in the static field `PhotoFaceCaptureActivity.images`. When starting activity, three string extras may be passed: upperText - text displayed above face placeholder, lowerText - text displayed below face placeholder, recordingHint - text displayed below face placeholder, that replaces lowerText after clicking camera button. Each of the extras may be omitted - no text will be displayed in destined place. Remember to add `PhotoFaceCaptureActivity` to your application's manifest file.
 
 ```xml
@@ -221,7 +281,8 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 ```
 
 
-## Recording video of user's face for liveliness detection
+## Recording video of user's face
+
 In order to record video containing user's face  `VideoFaceCaptureActivity` has to be started. The result can be obtained in `onActivtyResult` if result code is `RESULT_OK` using static field: `VideoFaceCaptureActivity.video`. When starting activity, three string extras may be passed: upperText - text displayed above face placeholder, lowerText - text displayed below face placeholder, recordingHint - text displayed below face placeholder, that replaces lowerText after clicking camera button. Each of the extras may be omitted - no text will be displayed in destined place. Remember to add `VideoFaceCaptureActivity` to your application's manifest file.
 
 ```xml
@@ -248,8 +309,10 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 ```
 
 ## Authenticating with the facial module
+
 In order to authenticate with the facial module use the `sendProvidedPhotosToAuthenticate` method of the `Manager` class.
 An array of cropped images of the face in Bitmap format or video containing face is passed as the parameter.
+
 ```java
 Manager.getInstance().sendProvidedFaceCapturesToAuthenticate(PhotosFaceCaptureActivity.images, new FaceCapturesAuthenticateCallback() {
 
@@ -280,11 +343,19 @@ Manager.getInstance().sendProvidedFaceCapturesToAuthenticate(VideoFaceCaptureAct
 });
 ```
 
-On success, the FaceAuthenticateModel object contains a score, accessible by calling `getScore()` and a liveliness measure, accessible by calling `getLiveliness()`. In case of sending images, the liveliness will always return 0.0.
+### Serialising authenticatiion with the facial module
+
+To get serialised authentication request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedSendProvidedFaceCapturesToAuthenticate(VideoFaceCaptureActivity.video, metadata)
+```
 
 ## Enrolling with the facial module
+
 Enrolling with the facial module is done by calling the `sendProvidedFaceCapturesToEnroll ` method of the `Manager` class.
 An array of cropped images of the face in Bitmap format or video containing face is passed as the parameter.
+
 ```java
 Manager.getInstance().sendProvidedFaceCapturesToEnroll(PhotoFaceCaptureActivity.images, new FaceCapturesEnrollCallback() {
   @Override
@@ -312,10 +383,19 @@ Manager.getInstance().sendProvidedFaceCapturesToEnroll(VideoFaceCaptureActivity.
   }
 });
 ```
+### Serialising enrolling with the facial module request
+
+To get serialised enroll request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedSendProvidedFaceCapturesToEnroll(VideoFaceCaptureActivity.video, metadata)
+```
 
 ## Comparing faces
+
 Two batches of images of faces can be compared using the`compareFacesPhotos` method of the `Manager` class.
 The method accepts an array of images of the first face and an array of images of the second face as parameters.
+
 ```java
 Manager.getInstance().compareFacesPhotos(facialImages1, facialImages2, new FaceCompareCallback() {
   @Override
@@ -329,4 +409,11 @@ Manager.getInstance().compareFacesPhotos(facialImages1, facialImages2, new FaceC
   }
 });
 ```
-On success, the FaceCompareModel object contains a similarity, accessible by calling `getSimilarity()` and a two liveliness measures, accessible by calling `getFirstLiveliness()` and `getSecondLiveliness()`. In case of sending images, the liveliness will always return 0.0.
+
+### Serialising face compare request
+
+To get serialised face comparison request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedCompareFacesPhotos(facialImages1, facialImages2, metadata)
+```

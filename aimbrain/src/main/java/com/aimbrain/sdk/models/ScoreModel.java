@@ -1,11 +1,12 @@
 package com.aimbrain.sdk.models;
 
 
+import java.io.UnsupportedEncodingException;
 
 /**
  * Class representing score data received from server
  */
-public class ScoreModel {
+public class ScoreModel extends MetadataModel {
 
     public static final int AUTHENTICATING = 1;
     public static final int ENROLLING = 0;
@@ -14,7 +15,8 @@ public class ScoreModel {
     private double score;
     private int status;
 
-    public ScoreModel(double score, int status, String session) {
+    public ScoreModel(double score, int status, String session, byte[] metadata) {
+        super(metadata);
         this.score = score;
         this.status = status;
         this.session = session;

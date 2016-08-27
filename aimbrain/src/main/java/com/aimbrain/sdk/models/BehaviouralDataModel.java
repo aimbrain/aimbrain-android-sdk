@@ -1,5 +1,7 @@
 package com.aimbrain.sdk.models;
 
+import android.util.Base64;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -12,12 +14,13 @@ public class BehaviouralDataModel {
     private List<EventModel> textEvents;
     private List<EventModel> touches;
     private List<EventModel> accelerations;
+    private byte[] metadata;
 
-
-    public BehaviouralDataModel(List<EventModel> textModels, List<EventModel> accelerometerModels, List<EventModel> touchModels) {
+    public BehaviouralDataModel(List<EventModel> textModels, List<EventModel> accelerometerModels, List<EventModel> touchModels, byte[] metadata) {
         this.textEvents = textModels;
         this.accelerations = accelerometerModels;
         this.touches = touchModels;
+        this.metadata = metadata;
     }
 
     public JSONObject toJSON() throws JSONException {
@@ -25,6 +28,9 @@ public class BehaviouralDataModel {
         jsonObject.put("touches", modelArrayToJSONArray(touches));
         jsonObject.put("accelerations", modelArrayToJSONArray(accelerations));
         jsonObject.put("textEvents", modelArrayToJSONArray(textEvents));
+        if (metadata != null) {
+            jsonObject.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
         return jsonObject;
     }
 
@@ -36,5 +42,4 @@ public class BehaviouralDataModel {
         }
         return jsonArray;
     }
-
 }

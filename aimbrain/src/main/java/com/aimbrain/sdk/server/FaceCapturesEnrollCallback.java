@@ -1,5 +1,7 @@
 package com.aimbrain.sdk.server;
 
+import android.util.Base64;
+
 import com.aimbrain.sdk.models.FaceEnrollModel;
 import com.android.volley.VolleyError;
 
@@ -16,7 +18,13 @@ public abstract class FaceCapturesEnrollCallback implements FaceCapturesCallback
     public void fireSuccessAction(JSONObject response) {
         FaceEnrollModel faceEnrollModel = null;
         try {
-            faceEnrollModel = new FaceEnrollModel(response.getInt("imagesCount"));
+            int imagesCount = response.getInt("imagesCount");
+            byte[] metadata = null;
+            if (response.has("metadata")) {
+                String metadataString = response.getString("metadata");
+                metadata = Base64.decode(metadataString, Base64.DEFAULT);
+            }
+            faceEnrollModel = new FaceEnrollModel(imagesCount, metadata);
         } catch (JSONException e) {
             e.printStackTrace();
         }

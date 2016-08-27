@@ -57,12 +57,7 @@ public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHol
         canvas.drawRect(new RectF(content.left - overdraw, content.top - overdraw, content.right + overdraw, content.bottom + overdraw), getOverlayBackgroundPaint());
 
         RectF mask = getMaskCanvasRect();
-        float maskHeight = mask.height();
-
         canvas.drawRoundRect(mask, mask.top, mask.top, getTransparentPaint());
-        canvas.drawLine(mask.left, (float) (mask.top + maskHeight / 2.7), mask.right, (float) (mask.top + maskHeight / 2.7), getStrokePaint());
-        canvas.drawLine(mask.left, (float) (mask.top + maskHeight / 2.0), mask.right, (float) (mask.top + maskHeight / 2.0), getStrokePaint());
-
         holder.unlockCanvasAndPost(canvas);
     }
 
@@ -128,15 +123,6 @@ public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHol
     @Deprecated
     public float getMaskWidth() {
         return (float) (getHolder().getSurfaceFrame().width() * FaceCaptureActivity.BOX_WIDTH);
-    }
-
-    @NonNull
-    private Paint getStrokePaint() {
-        Paint strokePaint = new Paint();
-        strokePaint.setColor(Color.BLACK);
-        strokePaint.setStrokeWidth(1);
-        strokePaint.setStyle(Paint.Style.STROKE);
-        return strokePaint;
     }
 
     @NonNull

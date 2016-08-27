@@ -7,6 +7,8 @@ import android.view.View;
 import android.view.Window;
 
 import com.aimbrain.sdk.faceCapture.PictureManager;
+import com.aimbrain.sdk.models.EventModel;
+import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
 import com.aimbrain.sdk.server.FaceActions;
@@ -167,13 +169,43 @@ public class Manager {
     }
 
     /**
+     * Allows for passing existing session id. Only serialization calls will be available in this mode.
+     *
+     * @param sessionId existing session id
+     */
+    public void configure(String sessionId) {
+        SessionModel model = new SessionModel(sessionId, SessionModel.NOT_ENROLLED, SessionModel.NOT_ENROLLED, null);
+        this.server = new Server(model);
+    }
+
+    /**
      * Allows for passing server configuration. Needs to be called before sending any data or creating session.
      *
-     * @param apiKey  application identifier
+     * @param apiKey application identifier
      * @param secret secret defined for given application id
      */
     public void configure(String apiKey, String secret) {
         this.server = new Server(apiKey, secret);
+    }
+
+    /**
+     * Allows for passing server configuration. Needs to be called before sending any data or creating session.
+     *
+     * @param apiKey     application identifier
+     * @param secret     secret defined for given application id
+     * @param apiBaseUrl base api server url.
+     */
+    public void configure(String apiKey, String secret, String apiBaseUrl) {
+        this.server = new Server(apiKey, secret, apiBaseUrl);
+    }
+
+    /**
+     * Api call availability check.
+     *
+     * @return true if current configuration allows to make call to server.
+     */
+    public boolean isConfiguredForApiCalls() {
+        return this.server != null && this.server.isConfiguredForApiCalls();
     }
 
     /**
@@ -182,11 +214,12 @@ public class Manager {
      * @param userId          user identifier
      * @param context         context used to obtain display size
      * @param sessionCallback callback for successful session creation
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void createSession(String userId, Context context, SessionCallback sessionCallback) throws InternalException, ConnectException {
-        this.server.createSession(userId, context, sessionCallback, new AMBNResponseErrorListener());
+        this.createSession(userId, null, context, sessionCallback, new AMBNResponseErrorListener());
     }
 
     /**
@@ -196,95 +229,302 @@ public class Manager {
      * @param context         context used to obtain display size
      * @param sessionCallback callback for successful session creation
      * @param errorListener   callback for error handling
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void createSession(String userId, Context context, SessionCallback sessionCallback, Response.ErrorListener errorListener) throws InternalException, ConnectException {
-        if (this.server == null)
+        this.createSession(userId, null, context, sessionCallback, errorListener);
+    }
+
+    /**
+     * Allows for creating session. Method needs to be called before sending gathered data.
+     *
+     * @param userId          user identifier
+     * @param metadata        request metadata
+     * @param context         context used to obtain display size
+     * @param sessionCallback callback for successful session creation
+     * @param errorListener   callback for error handling
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void createSession(String userId, byte[] metadata, Context context, SessionCallback sessionCallback, Response.ErrorListener errorListener) throws InternalException, ConnectException {
+        if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
-        this.server.createSession(userId, context, sessionCallback, errorListener);
+        }
+        this.server.createSession(userId, metadata, context, sessionCallback, errorListener);
+    }
+
+    /**
+     * Retrieves serialized create session call.
+     *
+     * @param userId   user identifier
+     * @param metadata request metadata
+     * @param context  context used to obtain display size
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedCreateSession(String userId, byte[] metadata, Context context) throws InternalException {
+        if (this.server == null) {
+            throw new IllegalStateException("Server is not configured properly.");
+        }
+
+        return this.server.getSerializedCreateSession(userId, metadata, context);
     }
 
     /**
      * Submits data collected between method's invocations.
      *
      * @param scoreCallback callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws ConnectException  thrown when connection problem occurs
-     * @throws SessionException  thrown when session has not yet been created
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void submitCollectedData(ScoreCallback scoreCallback) throws InternalException, ConnectException, SessionException {
-        if (this.server == null)
+        this.submitCollectedData(null, scoreCallback);
+    }
+
+    /**
+     * Submits data collected between method's invocations.
+     *
+     * @param scoreCallback callback for receiving response from server
+     * @param metadata      request metadata
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void submitCollectedData(byte[] metadata, ScoreCallback scoreCallback) throws InternalException, ConnectException, SessionException {
+        if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
+        }
+
         if (TextEventCollector.getInstance().hasData() || SensorEventCollector.getInstance().hasData() || MotionEventCollector.getInstance().hasData()) {
-            BehaviouralDataModel behaviouralDataModel = new BehaviouralDataModel(TextEventCollector.getInstance().getCollectedData(), SensorEventCollector.getInstance().getCollectedData(), MotionEventCollector.getInstance().getCollectedData());
+            List<EventModel> textData = TextEventCollector.getInstance().getCollectedData();
+            List<EventModel> sensorData = SensorEventCollector.getInstance().getCollectedData();
+            List<EventModel> motionData = MotionEventCollector.getInstance().getCollectedData();
+            BehaviouralDataModel behaviouralDataModel = new BehaviouralDataModel(textData, sensorData, motionData, metadata);
             this.server.submitData(behaviouralDataModel, scoreCallback);
         }
+    }
+
+    /**
+     * Retrieves serialized request for data collected between method's invocations
+     *
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSubmitCollectedData(byte[] metadata) throws InternalException, SessionException {
+        if (this.server == null) {
+            throw new IllegalStateException("Server is not configured properly.");
+        }
+
+        List<EventModel> textData = TextEventCollector.getInstance().getCollectedData();
+        List<EventModel> sensorData = SensorEventCollector.getInstance().getCollectedData();
+        List<EventModel> motionData = MotionEventCollector.getInstance().getCollectedData();
+        BehaviouralDataModel behaviouralDataModel = new BehaviouralDataModel(textData, sensorData, motionData, metadata);
+        return this.server.getSerializedSubmitData(behaviouralDataModel);
     }
 
     /**
      * Sends request for current score to the server.
      *
      * @param scoreCallback callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws SessionException  thrown when session has not yet been created
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
-
     public void getCurrentScore(ScoreCallback scoreCallback) throws InternalException, SessionException, ConnectException {
-        server.getCurrentScore(scoreCallback);
+        this.getCurrentScore(null, scoreCallback);
+    }
+
+    /**
+     * Sends request for current score to the server.
+     *
+     * @param metadata      request metadata
+     * @param scoreCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void getCurrentScore(byte[] metadata, ScoreCallback scoreCallback) throws InternalException, SessionException, ConnectException {
+        server.getCurrentScore(metadata, scoreCallback);
+    }
+
+    /**
+     * Retrieves serialized request of request for current score.
+     *
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedGetCurrentScore(byte[] metadata) throws InternalException, SessionException {
+        if (this.server == null) {
+            throw new IllegalStateException("Server is not configured properly.");
+        }
+
+        return server.getSerializedGetCurrentScore(metadata);
     }
 
     /**
      * Sends photo to enroll endpoint on the server.
      *
-     * @param photos               photos to send
+     * @param photos                     photos to send
      * @param faceCapturesEnrollCallback callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws SessionException  thrown when session has not yet been created
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void sendProvidedFaceCapturesToEnroll(List<Bitmap> photos, FaceCapturesEnrollCallback faceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
-        sendFaceCaptures(encodePhotos(photos), FaceActions.FACE_ENROLL, faceCapturesEnrollCallback);
+        this.sendProvidedFaceCapturesToEnroll(photos, null, faceCapturesEnrollCallback);
+    }
+
+    /**
+     * Sends photo to enroll endpoint on the server.
+     *
+     * @param photos                     photos to send
+     * @param metadata                   request metadata
+     * @param faceCapturesEnrollCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedFaceCapturesToEnroll(List<Bitmap> photos, byte[] metadata, FaceCapturesEnrollCallback faceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
+        sendFaceCaptures(encodePhotos(photos), metadata, FaceActions.FACE_ENROLL, faceCapturesEnrollCallback);
+    }
+
+    /**
+     * Retrieves serialized request of sending photo to enroll endpoint on the server.
+     *
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSendProvidedFaceCapturesToEnroll(List<Bitmap> photos, byte[] metadata) throws InternalException {
+        return getSerializedSendFaceCaptures(encodePhotos(photos), metadata, FaceActions.FACE_ENROLL);
     }
 
     /**
      * Sends photo to authentication endpoint on the server.
      *
-     * @param photos                     photos to send
+     * @param photos                           photos to send
      * @param faceCapturesAuthenticateCallback callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws SessionException  thrown when session has not yet been created
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void sendProvidedFaceCapturesToAuthenticate(List<Bitmap> photos, FaceCapturesAuthenticateCallback faceCapturesAuthenticateCallback) throws InternalException, ConnectException, SessionException {
-        sendFaceCaptures(encodePhotos(photos), FaceActions.FACE_AUTH, faceCapturesAuthenticateCallback);
+        this.sendProvidedFaceCapturesToAuthenticate(photos, null, faceCapturesAuthenticateCallback);
+    }
+
+    /**
+     * Sends photo to authentication endpoint on the server.
+     *
+     * @param photos                           photos to send
+     * @param metadata                         request metadata
+     * @param faceCapturesAuthenticateCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedFaceCapturesToAuthenticate(List<Bitmap> photos, byte[] metadata, FaceCapturesAuthenticateCallback faceCapturesAuthenticateCallback) throws InternalException, ConnectException, SessionException {
+        sendFaceCaptures(encodePhotos(photos), metadata, FaceActions.FACE_AUTH, faceCapturesAuthenticateCallback);
+    }
+
+    /**
+     * Retrieves serialized request of sending photo to authentication endpoint on the server.
+     *
+     * @param photos   photos to send
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSendProvidedFaceCapturesToAuthenticate(List<Bitmap> photos, byte[] metadata) throws InternalException {
+        return getSerializedSendFaceCaptures(encodePhotos(photos), metadata, FaceActions.FACE_AUTH);
     }
 
     /**
      * Sends video to enroll endpoint on the server.
      *
-     * @param video               video to send
+     * @param video                      video to send
      * @param faceCapturesEnrollCallback callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws SessionException  thrown when session has not yet been created
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void sendProvidedFaceCapturesToEnroll(byte[] video, FaceCapturesEnrollCallback faceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
-        sendFaceCaptures(encodeVideo(video), FaceActions.FACE_ENROLL, faceCapturesEnrollCallback);
+        this.sendProvidedFaceCapturesToEnroll(video, null, faceCapturesEnrollCallback);
     }
 
     /**
-     * Sends photo to authentication endpoint on the server.
+     * Sends video to enroll endpoint on the server.
      *
-     * @param video                     video to send
+     * @param video                      video to send
+     * @param metadata                   request metadata
+     * @param faceCapturesEnrollCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedFaceCapturesToEnroll(byte[] video, byte[] metadata, FaceCapturesEnrollCallback faceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
+        sendFaceCaptures(encodeVideo(video), metadata, FaceActions.FACE_ENROLL, faceCapturesEnrollCallback);
+    }
+
+    /**
+     * Retrieves serialized request of sending photo to enroll endpoint on the server.
+     *
+     * @param video    video to send
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSendProvidedFaceCapturesToEnroll(byte[] video, byte[] metadata) throws InternalException {
+        return getSerializedSendFaceCaptures(encodeVideo(video), metadata, FaceActions.FACE_ENROLL);
+    }
+
+    /**
+     * Sends video to authentication endpoint on the server.
+     *
+     * @param video                            video to send
      * @param faceCapturesAuthenticateCallback callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws SessionException  thrown when session has not yet been created
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void sendProvidedFaceCapturesToAuthenticate(byte[] video, FaceCapturesAuthenticateCallback faceCapturesAuthenticateCallback) throws InternalException, ConnectException, SessionException {
-        sendFaceCaptures(encodeVideo(video), FaceActions.FACE_AUTH, faceCapturesAuthenticateCallback);
+        this.sendProvidedFaceCapturesToAuthenticate(video, null, faceCapturesAuthenticateCallback);
+    }
+
+    /**
+     * Sends video to authentication endpoint on the server.
+     *
+     * @param video                            video to send
+     * @param metadata                         request metadata
+     * @param faceCapturesAuthenticateCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedFaceCapturesToAuthenticate(byte[] video, byte[] metadata, FaceCapturesAuthenticateCallback faceCapturesAuthenticateCallback) throws InternalException, ConnectException, SessionException {
+        sendFaceCaptures(encodeVideo(video), metadata, FaceActions.FACE_AUTH, faceCapturesAuthenticateCallback);
+    }
+
+    /**
+     * Retrieves serialized request of sending photo to authentication endpoint on the server.
+     *
+     * @param video    video to send
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSendProvidedFaceCapturesToAuthenticate(byte[] video, byte[] metadata) throws InternalException {
+        return getSerializedSendFaceCaptures(encodeVideo(video), metadata, FaceActions.FACE_AUTH);
     }
 
     /**
@@ -293,12 +533,41 @@ public class Manager {
      * @param firstFacePhotos  photos of the first face to compare
      * @param secondFacePhotos photos of the second face to compare
      * @param callback         callback for receiving response from server
-     * @throws InternalException thrown when preparing request for server fails
-     * @throws SessionException  thrown when session has not yet been created
-     * @throws ConnectException  thrown when connection problem occurs
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void compareFacesPhotos(List<Bitmap> firstFacePhotos, List<Bitmap> secondFacePhotos, FaceCompareCallback callback) throws InternalException, ConnectException, SessionException {
-        server.compareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), callback);
+        this.compareFacesPhotos(firstFacePhotos, secondFacePhotos, null, callback);
+    }
+
+    /**
+     * Compares two faces.
+     *
+     * @param firstFacePhotos  photos of the first face to compare
+     * @param secondFacePhotos photos of the second face to compare
+     * @param metadata         request metadata
+     * @param callback         callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void compareFacesPhotos(List<Bitmap> firstFacePhotos, List<Bitmap> secondFacePhotos, byte[] metadata, FaceCompareCallback callback) throws InternalException, ConnectException, SessionException {
+        server.compareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), metadata, callback);
+    }
+
+    /**
+     * Retrieves serialized request to compare two faces.
+     *
+     * @param firstFacePhotos  photos of the first face to compare
+     * @param secondFacePhotos photos of the second face to compare
+     * @param metadata         request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedCompareFacesPhotos(List<Bitmap> firstFacePhotos, List<Bitmap> secondFacePhotos, byte[] metadata) throws InternalException {
+        return server.getSerializedCompareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), metadata);
     }
 
     private StringListDataModel encodePhotos(List<Bitmap> photos) {
@@ -319,8 +588,12 @@ public class Manager {
         return encodedVideoModel;
     }
 
-    private void sendFaceCaptures(StringListDataModel captures, FaceActions faceAction, FaceCapturesCallback faceCapturesCallback) throws InternalException, ConnectException, SessionException {
-        server.sendProvidedFaceCaptures(captures, faceCapturesCallback, faceAction);
+    private void sendFaceCaptures(StringListDataModel captures, byte[] metadata, FaceActions faceAction, FaceCapturesCallback faceCapturesCallback) throws InternalException, ConnectException, SessionException {
+        server.sendProvidedFaceCaptures(captures, metadata, faceCapturesCallback, faceAction);
+    }
+
+    private SerializedRequest getSerializedSendFaceCaptures(StringListDataModel captures, byte[] metadata, FaceActions faceAction) throws InternalException {
+        return server.getSerializedSendProvidedFaceCaptures(captures, metadata, faceAction);
     }
 
     public SessionModel getSession() {

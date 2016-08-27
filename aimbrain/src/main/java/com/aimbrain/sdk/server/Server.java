@@ -6,12 +6,14 @@ import android.graphics.Point;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
 import com.aimbrain.sdk.models.FaceCompareModel;
+import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
 import com.android.volley.DefaultRetryPolicy;
@@ -49,9 +51,11 @@ import javax.crypto.spec.SecretKeySpec;
 
 
 public class Server {
-
     private static final int SOCKET_TIMEOUT = 10000; //[ms]
     private static final int MAX_RETRIES = 1;
+    public static final String DEFAULT_API_BASE_URL = "https://api.aimbrain.com:443/v1/";
+
+    private boolean apiCallsAllowed;
     private String apiKey;
     private String secret;
     private URL baseURL;
@@ -64,15 +68,23 @@ public class Server {
     private SessionModel session;
     private LinkedList<BehaviouralDataModel> dataQueue;
 
-
+    public Server(SessionModel session) {
+        this.apiCallsAllowed = false;
+        this.session = session;
+    }
 
     public Server(String apiKey, String secret) {
+        this(apiKey, secret, DEFAULT_API_BASE_URL);
+    }
+
+    public Server(String apiKey, String secret, String apiBaseUrl) {
+        this.apiCallsAllowed = true;
         this.apiKey = apiKey;
         this.secret = secret;
         setUpRequestQueue();
         this.dataQueue = new LinkedList<>();
         try {
-            this.baseURL = new URL("https://api.aimbrain.com:443/v1/");
+            this.baseURL = new URL(apiBaseUrl);
             this.sessionURL = new URL(baseURL, "sessions");
             this.submitBehaviouralURL = new URL(baseURL, "behavioural");
             this.scoreURL = new URL(baseURL, "score");
@@ -89,6 +101,10 @@ public class Server {
         return session;
     }
 
+    public boolean isConfiguredForApiCalls() {
+        return apiCallsAllowed;
+    }
+    
     private void setUpRequestQueue(){
         Network network = new BasicNetwork(new HurlStack());
         this.requestQueue = new RequestQueue(new NoCache(), network);
@@ -122,61 +138,93 @@ public class Server {
         return headersMap;
     }
 
-    public void createSession(String userId, Context context, final SessionCallback sessionCallback, Response.ErrorListener errorListener) throws InternalException, ConnectException {
-        try {
-            if(isOnline()) {
-                WindowManager windowManager = (WindowManager)  context.getSystemService(Context.WINDOW_SERVICE);
-                Display display = windowManager.getDefaultDisplay();
-                Point screenSize = new Point();
-                display.getSize(screenSize);
-                String system = "Android " + Build.VERSION.RELEASE;
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("userId", userId);
-                jsonObject.put("device", android.os.Build.MODEL);
-                jsonObject.put("system", system);
-                jsonObject.put("screenWidth", screenSize.x);
-                jsonObject.put("screenHeight", screenSize.y);
+    public void createSession(String userId, byte[] metadata, Context context, final SessionCallback sessionCallback, Response.ErrorListener errorListener) throws InternalException, ConnectException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
 
-                AMBNObjectRequest jsonRequest = new AMBNObjectRequest
-                        (getHeadersMap(jsonObject, this.sessionURL), Request.Method.POST, this.sessionURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
-                            @Override
-                            public void onResponse(JSONObject response) {
-                                try {
-                                    Server.this.session = new SessionModel(response.get("session").toString(), response.getInt("face"), response.getInt("behaviour"));
-                                    if(sessionCallback != null)
-                                        sessionCallback.onSessionCreated(Server.this.session);
-                                } catch (JSONException e) {
-                                    e.printStackTrace();
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+
+        try {
+            JSONObject jsonObject = JSONForCreateSession(userId, metadata, context);
+            AMBNObjectRequest jsonRequest = new AMBNObjectRequest
+                    (getHeadersMap(jsonObject, this.sessionURL), Request.Method.POST, this.sessionURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            try {
+                                String session = response.get("session").toString();
+                                int face = response.getInt("face");
+                                int behaviour = response.getInt("behaviour");
+                                byte[] metadata = null;
+                                if (response.has("metadata")) {
+                                    String metadataString = response.getString("metadata");
+                                    metadata = Base64.decode(metadataString, Base64.DEFAULT);
                                 }
+                                Server.this.session = new SessionModel(session, face, behaviour, metadata);
+                                if (sessionCallback != null) {
+                                    sessionCallback.onSessionCreated(Server.this.session);
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
                             }
-                        }, errorListener);
-                sendRequest(jsonRequest);
-            }
-            else
-                throw new ConnectException("Unable to connect to server (check network settings).");
-        } catch (JSONException e) {
-            throw new InternalException("Unable to create correct session request.");
-        } catch (InvalidSignatureException e) {
+                        }
+                    }, errorListener);
+
+            sendRequest(jsonRequest);
+        } catch (JSONException | InvalidSignatureException e) {
             throw new InternalException("Unable to create correct session request.");
         }
+    }
+
+    public SerializedRequest getSerializedCreateSession(String userId, byte[] metadata, Context context) throws InternalException {
+        try {
+            JSONObject jsonObject = JSONForCreateSession(userId, metadata, context);
+            return new SerializedRequest(jsonObject.toString());
+        } catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    private JSONObject JSONForCreateSession(String userId, byte[] metadata, Context context) throws JSONException {
+        WindowManager windowManager = (WindowManager)  context.getSystemService(Context.WINDOW_SERVICE);
+        Display display = windowManager.getDefaultDisplay();
+        Point screenSize = new Point();
+        display.getSize(screenSize);
+        String system = "Android " + Build.VERSION.RELEASE;
+        JSONObject json = new JSONObject();
+        json.put("userId", userId);
+        json.put("device", android.os.Build.MODEL);
+        json.put("system", system);
+        json.put("screenWidth", screenSize.x);
+        json.put("screenHeight", screenSize.y);
+        if (metadata != null) {
+            json.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return json;
     }
 
     public void submitData(BehaviouralDataModel behaviouralDataModel, ScoreCallback scoreCallback) throws InternalException, ConnectException, SessionException {
-        this.dataQueue.add(behaviouralDataModel);
-        if(isOnline()) {
-            if(session != null) {
-                sendAllDataFromQueue(scoreCallback);
-            }
-            else
-                throw new SessionException("Unintialized session.");
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
         }
-        else
+
+        this.dataQueue.add(behaviouralDataModel);
+
+        if (!isOnline()) {
             throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+
+        if (session == null) {
+            throw new SessionException("Unintialized session.");
+        }
+
+        sendAllDataFromQueue(scoreCallback);
     }
 
     private boolean isOnline() {
-        ConnectivityManager cm =
-                (ConnectivityManager) AMBNApplication.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm = (ConnectivityManager) AMBNApplication.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         return netInfo != null && netInfo.isConnected();
     }
@@ -184,17 +232,23 @@ public class Server {
     private void sendAllDataFromQueue(final ScoreCallback scoreCallback) throws InternalException {
         try {
             final String sessionIdCopy = session.getSessionId();
-            while(!this.dataQueue.isEmpty())
-            {
+            while (!this.dataQueue.isEmpty()) {
                 final BehaviouralDataModel behaviouralDataModel = this.dataQueue.removeFirst();
                 JSONObject jsonObject = wrapJSONObjectWithSession(behaviouralDataModel.toJSON());
                 AMBNObjectRequest objectRequest = new AMBNObjectRequest(getHeadersMap(jsonObject, this.submitBehaviouralURL), Request.Method.POST, this.submitBehaviouralURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
                     @Override
                     public void onResponse(JSONObject response) {
-                        if(scoreCallback != null) {
-                            ScoreModel scoreModel = null;
+                        if (scoreCallback != null) {
+                            ScoreModel scoreModel;
                             try {
-                                scoreModel = new ScoreModel(response.getDouble("score"), response.getInt("status"), sessionIdCopy);
+                                double score = response.getDouble("score");
+                                int status = response.getInt("status");
+                                byte[] metadata = null;
+                                if (response.has("metadata")) {
+                                    String metadataString = response.getString("metadata");
+                                    metadata = Base64.decode(metadataString, Base64.DEFAULT);
+                                }
+                                scoreModel = new ScoreModel(score, status, sessionIdCopy, metadata);
                                 scoreCallback.success(scoreModel);
                             } catch (JSONException e) {
                                 e.printStackTrace();
@@ -215,128 +269,224 @@ public class Server {
         }
     }
 
+    public SerializedRequest getSerializedSubmitData(BehaviouralDataModel behaviouralDataModel) throws InternalException, SessionException {
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try {
+            JSONObject jsonObject = wrapJSONObjectWithSession(behaviouralDataModel.toJSON());
+            return new SerializedRequest(jsonObject.toString());
+        } catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
     private JSONObject wrapJSONObjectWithSession(JSONObject jsonObject) throws JSONException {
         jsonObject.put("session", session.getSessionId());
         return jsonObject;
     }
 
-    public void getCurrentScore(final ScoreCallback scoreCallback) throws InternalException, ConnectException, SessionException {
-        try {
-            if(isOnline()) {
-                if(session != null) {
-                    final String sessionIdCopy = session.getSessionId();
-                    JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
-                    AMBNObjectRequest jsonRequest = new AMBNObjectRequest
-                            (getHeadersMap(jsonObject, this.scoreURL), Request.Method.POST, this.scoreURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
-                                @Override
-                                public void onResponse(JSONObject response) {
-                                    try {
-                                        if (scoreCallback != null) {
-                                            ScoreModel scoreModel = new ScoreModel(response.getDouble("score"), response.getInt("status"), sessionIdCopy);
-                                            scoreCallback.success(scoreModel);
-                                        }
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }, new AMBNResponseErrorListener());
+    public void getCurrentScore(byte[] metadata, final ScoreCallback scoreCallback) throws InternalException, ConnectException, SessionException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
 
-                    sendRequest(jsonRequest);
-                }
-                else
-                    throw new SessionException("Uninitialized session.");
-            }
-            else
-                throw new ConnectException("Unable to connect to server (check network settings).");
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try {
+            final String sessionIdCopy = session.getSessionId();
+            JSONObject jsonObject = JSONForGetCurrentScore(metadata);
+            AMBNObjectRequest jsonRequest = new AMBNObjectRequest
+                    (getHeadersMap(jsonObject, this.scoreURL), Request.Method.POST, this.scoreURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            try {
+                                if (scoreCallback != null) {
+                                    double score = response.getDouble("score");
+                                    int status = response.getInt("status");
+                                    byte[] metadata = null;
+                                    if (response.has("metadata")) {
+                                        String metadataString = response.getString("metadata");
+                                        metadata = Base64.decode(metadataString, Base64.DEFAULT);
+                                    }
+                                    ScoreModel scoreModel = new ScoreModel(score, status, sessionIdCopy, metadata);
+                                    scoreCallback.success(scoreModel);
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }, new AMBNResponseErrorListener());
+
+            sendRequest(jsonRequest);
         } catch (JSONException | InvalidSignatureException e) {
             throw new InternalException("Unable to create correct session request.");
         }
     }
 
-    public void sendProvidedFaceCaptures(StringListDataModel photos, final FaceCapturesCallback callback, FaceActions faceAction)  throws InternalException, ConnectException, SessionException {
+    public SerializedRequest getSerializedGetCurrentScore(byte[] metadata) throws InternalException, SessionException {
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
         try {
-            if(isOnline()) {
-                if(session != null) {
-                    JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
-                    jsonObject.put("faces", photos.toJSON());
+            JSONObject jsonObject = JSONForGetCurrentScore(metadata);
+            return new SerializedRequest(jsonObject.toString());
+        } catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
 
-                    AMBNObjectRequest jsonRequest = null;
-                    try {
-                        jsonRequest = new AMBNObjectRequest
-                                (getHeadersMap(jsonObject, this.faceActionsURLs.get(faceAction)), Request.Method.POST, this.faceActionsURLs.get(faceAction).toString(), jsonObject, new Response.Listener<JSONObject>() {
-                                    @Override
-                                    public void onResponse(JSONObject response) {
-                                        Log.d("Response", "response: " + response.toString());
-                                        callback.fireSuccessAction(response);
-                                    }
-                                }, new AMBNResponseErrorListener() {
-                                    @Override
-                                    public void onErrorResponse(VolleyError error) {
-                                        Log.d("JSON error", error.networkResponse.data.toString());
-                                        super.onErrorResponse(error);
-                                        callback.failure(error);
-                                    }
-                                });
-                    } catch (InvalidSignatureException e) {
-                        e.printStackTrace();
-                    }
+    private JSONObject JSONForGetCurrentScore(byte[] metadata) throws JSONException {
+        JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
+        if (metadata != null) {
+            jsonObject.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return jsonObject;
+    }
 
-                    sendRequest(jsonRequest);
-                }
-                else
-                    throw new SessionException("Uninitialized session.");
+    public void sendProvidedFaceCaptures(StringListDataModel photos, byte[] metadata, final FaceCapturesCallback callback, FaceActions faceAction)  throws InternalException, ConnectException, SessionException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
+
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try {
+            JSONObject jsonObject = JSONForSendFaceCaptures(photos, metadata);
+            AMBNObjectRequest jsonRequest = null;
+            try {
+                jsonRequest = new AMBNObjectRequest
+                        (getHeadersMap(jsonObject, this.faceActionsURLs.get(faceAction)), Request.Method.POST, this.faceActionsURLs.get(faceAction).toString(), jsonObject, new Response.Listener<JSONObject>() {
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                Log.d("Response", "response: " + response.toString());
+                                callback.fireSuccessAction(response);
+                            }
+                        }, new AMBNResponseErrorListener() {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                Log.d("JSON error", error.networkResponse.data.toString());
+                                super.onErrorResponse(error);
+                                callback.failure(error);
+                            }
+                        });
+            } catch (InvalidSignatureException e) {
+                e.printStackTrace();
             }
-            else
-                throw new ConnectException("Unable to connect to server (check network settings).");
+            sendRequest(jsonRequest);
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    public void compareFaces(StringListDataModel firstFace, StringListDataModel secondFace, final FaceCompareCallback callback) throws InternalException, ConnectException, SessionException {
-        try{
-            if(isOnline()) {
-                if(session != null) {
-                    JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
-                    jsonObject.put("faces1", firstFace.toJSON());
-                    jsonObject.put("faces2", secondFace.toJSON());
-                    AMBNObjectRequest jsonRequest = null;
-                    try {
-                        jsonRequest = new AMBNObjectRequest
-                                (getHeadersMap(jsonObject, this.faceCompare), Request.Method.POST, this.faceCompare.toString(), jsonObject, new Response.Listener<JSONObject>() {
-                                    @Override
-                                    public void onResponse(JSONObject response) {
-                                        Log.d("Response", "response: " + response.toString());
-                                        try {
-                                            if (callback!= null) {
-                                                callback.success(new FaceCompareModel(response.getDouble("score"), response.getDouble("liveliness1"), response.getDouble("liveliness2")));
-                                            }
-                                        } catch (JSONException e) {
-                                            e.printStackTrace();
-                                        }
+    public SerializedRequest getSerializedSendProvidedFaceCaptures(StringListDataModel captures, byte[] metadata, FaceActions faceAction) throws InternalException {
+        try {
+            JSONObject jsonObject = JSONForSendFaceCaptures(captures, metadata);
+            return new SerializedRequest(jsonObject.toString());
+        }
+        catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
 
+    @NonNull
+    private JSONObject JSONForSendFaceCaptures(StringListDataModel photos, byte[] metadata) throws JSONException {
+        JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
+        jsonObject.put("faces", photos.toJSON());
+        if (metadata != null) {
+            jsonObject.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return jsonObject;
+    }
+
+    public void compareFaces(StringListDataModel firstFace, StringListDataModel secondFace, byte[] metadata, final FaceCompareCallback callback) throws InternalException, ConnectException, SessionException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
+
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try{
+            JSONObject jsonObject = JSONForCompareFaces(firstFace, secondFace, metadata);
+            AMBNObjectRequest jsonRequest = null;
+            try {
+                jsonRequest = new AMBNObjectRequest
+                        (getHeadersMap(jsonObject, this.faceCompare), Request.Method.POST, this.faceCompare.toString(), jsonObject, new Response.Listener<JSONObject>() {
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                Log.d("Response", "response: " + response.toString());
+                                try {
+                                    if (callback != null) {
+                                        double score = response.getDouble("score");
+                                        double liveliness1 = response.getDouble("liveliness1");
+                                        double liveliness2 = response.getDouble("liveliness2");
+                                        byte[] metadata = null;
+                                        if (response.has("metadata")) {
+                                            String metadataString = response.getString("metadata");
+                                            metadata = Base64.decode(metadataString, Base64.DEFAULT);
+                                        }
+                                        callback.success(new FaceCompareModel(score, liveliness1, liveliness2, metadata));
                                     }
-                                }, new AMBNResponseErrorListener() {
-                                    @Override
-                                    public void onErrorResponse(VolleyError error) {
-                                        Log.d("JSON error", error.networkResponse.data.toString());
-                                        super.onErrorResponse(error);
-                                        callback.failure(error);
-                                    }
-                                });
-                    } catch (InvalidSignatureException e) {
-                        e.printStackTrace();
-                    }
-                    sendRequest(jsonRequest);
-                }
-                else
-                    throw new SessionException("Uninitialized session.");
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+
+                            }
+                        }, new AMBNResponseErrorListener() {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                Log.d("JSON error", error.networkResponse.data.toString());
+                                super.onErrorResponse(error);
+                                callback.failure(error);
+                            }
+                        });
+            } catch (InvalidSignatureException e) {
+                e.printStackTrace();
             }
-            else
-                throw new ConnectException("Unable to connect to server (check network settings).");
+            sendRequest(jsonRequest);
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    public SerializedRequest getSerializedCompareFaces(StringListDataModel firstFace, StringListDataModel secondFace, byte[] metadata) throws InternalException {
+        try {
+            JSONObject jsonObject = JSONForCompareFaces(firstFace, secondFace, metadata);
+            return new SerializedRequest(jsonObject.toString());
+        }
+        catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    @NonNull
+    private JSONObject JSONForCompareFaces(StringListDataModel firstFace, StringListDataModel secondFace, byte[] metadata) throws JSONException {
+        JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
+        jsonObject.put("faces1", firstFace.toJSON());
+        jsonObject.put("faces2", secondFace.toJSON());
+        if (metadata != null) {
+            jsonObject.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return jsonObject;
     }
 
     private void sendRequest(Request request) {
@@ -344,5 +494,4 @@ public class Server {
         request.setRetryPolicy(policy);
         requestQueue.add(request);
     }
-
 }

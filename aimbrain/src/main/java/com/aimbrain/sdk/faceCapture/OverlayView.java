@@ -49,15 +49,6 @@ public class OverlayView extends View {
     }
 
     @NonNull
-    private Paint getStrokePaint() {
-        Paint strokePaint = new Paint();
-        strokePaint.setColor(Color.BLACK);
-        strokePaint.setStrokeWidth(1);
-        strokePaint.setStyle(Paint.Style.STROKE);
-        return strokePaint;
-    }
-
-    @NonNull
     private Paint getOverlayBackgroundPaint() {
         Paint backgroundPaint = new Paint();
         backgroundPaint.setColor(Color.BLACK);
@@ -78,13 +69,8 @@ public class OverlayView extends View {
         Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         RectF maskBounds = getMaskBounds();
-        float maskHeight = getMaskHeight();
-
         canvas.drawRect(new RectF(0, 0, (float) getMeasuredWidth(), (float) getMeasuredHeight()), getOverlayBackgroundPaint());
         canvas.drawRoundRect(maskBounds, maskBounds.top, maskBounds.top, getTransparentPaint());
-
-        canvas.drawLine(maskBounds.left, (float) (maskBounds.top + maskHeight / 2.7), maskBounds.right, (float) (maskBounds.top + maskHeight / 2.7), getStrokePaint());
-        canvas.drawLine(maskBounds.left, (float) (maskBounds.top + maskHeight / 2.0), maskBounds.right, (float) (maskBounds.top + maskHeight / 2.0), getStrokePaint());
         return bitmap;
     }
 }

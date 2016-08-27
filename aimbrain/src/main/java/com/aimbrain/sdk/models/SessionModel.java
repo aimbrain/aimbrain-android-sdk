@@ -1,6 +1,6 @@
 package com.aimbrain.sdk.models;
 
-public class SessionModel {
+public class SessionModel extends MetadataModel {
 
     public final static int NOT_ENROLLED = 0;
     public final static int ENROLLED = 1;
@@ -10,7 +10,8 @@ public class SessionModel {
     private int faceStatus;
     private int behaviourStatus;
 
-    public SessionModel(String sessionId, int faceStatus, int behaviourStatus) {
+    public SessionModel(String sessionId, int faceStatus, int behaviourStatus, byte[] metadata) {
+        super(metadata);
         this.sessionId = sessionId;
         this.faceStatus = faceStatus;
         this.behaviourStatus = behaviourStatus;

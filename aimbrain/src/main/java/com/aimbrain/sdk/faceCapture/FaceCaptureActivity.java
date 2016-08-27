@@ -75,7 +75,6 @@ public abstract class FaceCaptureActivity extends Activity {
     protected static final int PERMISSIONS_REQUEST_CAMERA_BUTTON = 2213;
 
 
-
     protected SurfaceView preview;
     protected SurfaceHolder previewHolder;
     protected SurfaceHolder overlaySurfaceHolder;
