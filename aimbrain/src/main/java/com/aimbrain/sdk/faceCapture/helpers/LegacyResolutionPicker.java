@@ -15,7 +15,7 @@ public class LegacyResolutionPicker extends ResolutionPicker {
         VideoSize targetSize = new VideoSize(RECORD_WIDTH, RECORD_HEIGHT);
         if (recordSizes.isEmpty()) {
             // choose from preview sizes for devices without record sizes (very old ones)
-            return getClosestByArea(recordSizes, targetSize);
+            return getClosestByArea(previewSizes, targetSize);
         } else {
             List<VideoSize> choices = commonSizes(recordSizes, previewSizes);
             if (choices.isEmpty()) {

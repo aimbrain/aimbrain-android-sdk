@@ -304,16 +304,30 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
                     camera.setDisplayOrientation(getCameraDisplayOrientation(getFrontCameraIndex()));
                     camera.setPreviewDisplay(previewHolder);
                     Camera.Parameters parameters = camera.getParameters();
-                    VideoSize size = getResolutionPicker(parameters).getPreviewSize(width, height);
-                    if (size != null) {
-                        Log.d(TAG, "surface changed camera best preview size " + size.width + "x" + size.height);
-                        previewSurfaceView.setAspectRatio(size.height, size.width);
-                        overlaySurfaceView.setAspectRatio(size.height, size.width);
+                    parameters.setRecordingHint(true);
 
-                       // PreviewManager.setPreviewTopBottomMargins(height, previewSurfaceView);
-                        parameters.setPreviewSize(size.width, size.height);
-                        Camera.Size pictureSize = getPictureSize(size, parameters);
+                    ResolutionPicker resolutionPicker = getResolutionPicker(parameters);
+                    VideoSize preview = resolutionPicker.getPreviewSize(width, height);
+                    if (preview != null) {
+                        Log.d(TAG, "surface changed, best size " + preview.width + "x" + preview.height);
+
+                        previewSurfaceView.setAspectRatio(preview.height, preview.width);
+                        overlaySurfaceView.setAspectRatio(preview.height, preview.width);
+
+                        Camera.Size pictureSize = getPictureSize(preview, parameters);
+                        parameters.setPreviewSize(preview.width, preview.height);
                         parameters.setPictureSize(pictureSize.width, pictureSize.height);
+
+                        /* Set camera parameter "video-size" to prevent distorted video on some
+                           device when setting recording-hint=true. Check if value is in allowed
+                           resolution list first */
+                        VideoSize videoSize = resolutionPicker.getRecordSize();
+                        String videoSizeValue = videoSize.width + "x" + videoSize.height;
+                        String allowedVideoSizeValues = parameters.get("video-size-values");
+                        if (allowedVideoSizeValues == null || allowedVideoSizeValues.contains(videoSizeValue)) {
+                            parameters.set("video-size", videoSizeValue);
+                        }
+
                         camera.setParameters(parameters);
                         camera.startPreview();
                         inPreview = true;
@@ -424,8 +438,9 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     MediaRecorder.OnInfoListener mediaRecorderInfoListener = new MediaRecorder.OnInfoListener() {
         @Override
         public void onInfo(MediaRecorder mr, int what, int extra) {
-            releaseMediaRecorder();
-            if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
+
+            if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
+                releaseMediaRecorder();
                 try {
                     byte[] video = Files.readAllBytes(getActivity().openFileInput(Files.TMP_VIDEO_FILE_NAME));
                     mListener.setResultAndFinish(video);
@@ -433,22 +448,25 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
                     mListener.displayErrorAndFinish("Unable to read saved video file.");
                 }
             }
-            else if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED)
-            {
+            else if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+                releaseMediaRecorder();
                 mListener.displayErrorAndFinish("Maximum video file size reached.");
             }
-            else
-            {
+            else if (what == MediaRecorder.MEDIA_RECORDER_INFO_UNKNOWN) {
+                releaseMediaRecorder();
                 mListener.displayErrorAndFinish("Unknown error.");
+            }
+            else {
+                Log.d("FaceCaptureActivity", "unregkognized onInfo, what = " + what + " extra = " + extra);
             }
         }
 
     };
 
     MediaRecorder.OnErrorListener mediaRecorderErrorListener = new MediaRecorder.OnErrorListener() {
-
         @Override
         public void onError(MediaRecorder mr, int what, int extra) {
+            Log.d("FaceCaptureActivity", "onError, what = " + what + " extra = " + extra);
             releaseMediaRecorder();
             mListener.displayErrorAndFinish("Unable to record video.");
         }
@@ -638,6 +656,15 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
     @Override
     public void onPermissionRequestResume() {
+        if (previewSurfaceView == null) {
+            setupCameraPreview();
+        }
+        if (mCameraOverlay == null) {
+            setupOverlay();
+            String upperText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT);
+            String lowerText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT);
+            setupOverlayTexts(upperText, lowerText);
+        }
         setupCamera();
     }
 }
