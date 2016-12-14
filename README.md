@@ -1,5 +1,9 @@
 # AimBrain SDK integration
 
+## Requirements
+
+* Android 4.0.x (API 14) or later
+
 ## Permissions
 
 SDK requires the following permissions:
@@ -52,11 +56,11 @@ Please refer to server side integration documentation for serialised data proces
 
 #Request metadata
 
-For some integration scenarios additional data may be required to be sent to server. 
+For some integration scenarios additional data may be required to be sent to server.
 
 Such integration-defined information should be submitted by calling function overload with parameter ```metadata```.
 
-Integration-defined information is returned from server in response field ```metadata```. 
+Integration-defined information is returned from server in response field ```metadata```.
 
 # Sessions
 
@@ -79,8 +83,8 @@ SessionModel returned contains the following parameters:
 * behaviourStatus - status of the Facial Module for given user and device pair (see below).
 
 
-Values possible for faceStatus field: 
-* 0 - User not enrolled - facial authentication not available, enrollment required. 
+Values possible for faceStatus field:
+* 0 - User not enrolled - facial authentication not available, enrollment required.
 * 1 - User enrolled - facial authentication available
 * 2 - Building template - enrollment done, AimBrain is building user template and no further action is required.
 
@@ -113,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
   }
 }
   ```
-  
+
 If data needs to be collected since the application creation, extend `AMBNApplication` class as shown in the example.
 
 ```java
@@ -183,7 +187,7 @@ Manager.getInstance().scheduleDataSubmission(0, 10000, new ScoreCallback() {
   }
 });
   ```
-  
+
 ### Serialising behavioural data submission request
 
 To get serialised data submit request use
@@ -205,7 +209,7 @@ Manager.getInstance().getCurrentScore(new ScoreCallback() {
   }
 });
   ```
-  
+
 ### Serialising current score request
 
 To get serialised data score request use
