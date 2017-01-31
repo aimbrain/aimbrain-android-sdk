@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -34,7 +35,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AnimationUtils;
-import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextSwitcher;
@@ -42,11 +43,11 @@ import android.widget.TextView;
 
 import com.aimbrain.aimbrain.R;
 import com.aimbrain.sdk.faceCapture.AutoFitTextureView;
-import com.aimbrain.sdk.faceCapture.OverlayView;
 import com.aimbrain.sdk.faceCapture.VideoFaceCaptureActivity;
-import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.Camera2ResolutionPicker;
+import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
+import com.aimbrain.sdk.faceCapture.views.RecordButton;
 import com.aimbrain.sdk.file.Files;
 
 import java.io.IOException;
@@ -112,11 +113,15 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
             openCamera(width, height);
+            updateButtonPosition();
+
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture texture, int width, int height) {
             configureTransform(width, height);
+
+            updateButtonPosition();
         }
 
         @Override
@@ -129,6 +134,14 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
         }
     };
 
+
+    void updateButtonPosition() {
+        if (getActivity() instanceof LayoutOverlayObserver) {
+            ((LayoutOverlayObserver) getActivity()).setRecordButtonPosition(
+                    new Rect(recordButton.getLeft(), recordButton.getTop(),
+                            recordButton.getRight(), recordButton.getBottom()));
+        }
+    }
     /**
      * The {@link Size} of camera preview.
      */
@@ -198,13 +211,10 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
 
     //overlay
-    private OverlayView mOverlaySurface;
     private TextSwitcher mLowerTextSwitcher;
     private TextView mUpperTextView;
-    private RelativeLayout mLowerTextRelativeLayout;
-    private RelativeLayout mUpperTextRelativeLayout;
-    private ImageButton mCaptureButton;
     private ProgressBar mProgressBar;
+    private View recordButton;
 
     public static Camera2Fragment newInstance(String upperText, String lowerText, String recordingHint,
                                               int duration) {
@@ -249,7 +259,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
         int parentHeight = mRootView.getMeasuredHeight();
         int parentWidth = mRootView.getMeasuredWidth();
 
-        float parentRatio = parentWidth / (float)parentHeight;
+        float parentRatio = parentWidth / (float) parentHeight;
         float textureRatio = mTextureView.getAspectRatio();
 
         float marginH = 0;
@@ -259,8 +269,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
             // texture is wider, margins on sides
             float expectedTextureWidth = parentHeight * textureRatio;
             marginH = parentWidth - expectedTextureWidth;
-        }
-        else {
+        } else {
             // texture is higher, margins on top and bottom
             float expectedTextureHeight = parentWidth / textureRatio;
             marginV = parentHeight - expectedTextureHeight;
@@ -300,9 +309,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
     private void createWithPermissions() {
         setupOverlay();
-        String upperText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT);
-        String lowerText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT);
-        setupOverlayTexts(upperText, lowerText);
+
     }
 
     /**
@@ -318,7 +325,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
      * Stops the background thread and its {@link Handler}.
      */
     private void stopBackgroundThread() {
-        if (mBackgroundHandler!=null) {
+        if (mBackgroundHandler != null) {
             mBackgroundThread.quitSafely();
         }
         mBackgroundThread = null;
@@ -376,10 +383,10 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
     @NonNull
     private Camera2ResolutionPicker createResolutionPicker(StreamConfigurationMap map) {
         Camera2ResolutionPicker config = new Camera2ResolutionPicker();
-        for (Size size: map.getOutputSizes(MediaRecorder.class)) {
+        for (Size size : map.getOutputSizes(MediaRecorder.class)) {
             config.addVideoSize(size.getWidth(), size.getHeight());
         }
-        for (Size size: map.getOutputSizes(SurfaceTexture.class)) {
+        for (Size size : map.getOutputSizes(SurfaceTexture.class)) {
             config.addPreviewSize(size.getWidth(), size.getHeight());
         }
         return config;
@@ -522,6 +529,13 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
     }
 
     private void startRecordingVideo() {
+        if(recordButton instanceof RecordButton) {
+            ((RecordButton)recordButton).startRecording();
+        }
+        Activity activity = getActivity();
+        if (activity instanceof LayoutOverlayObserver) {
+            ((LayoutOverlayObserver) activity).onRecordingStarted();
+        }
         if (null == mCameraDevice || !mTextureView.isAvailable() || null == mPreviewSize) {
             return;
         }
@@ -579,6 +593,14 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
     }
 
     private void stopRecordingVideo() {
+        if(recordButton instanceof RecordButton) {
+            ((RecordButton) recordButton).stopRecording();
+        }
+        Activity activity = getActivity();
+        if (activity instanceof LayoutOverlayObserver) {
+            ((LayoutOverlayObserver) activity).onRecordingStopped();
+        }
+
         closePreviewSession();
         mMediaRecorder.reset();
         mMediaRecorder.release();
@@ -589,49 +611,79 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
     private void setupOverlay() {
         final Activity activity = getActivity();
-        if (null == activity) {
+        if (null == activity || !(activity instanceof LayoutOverlayObserver)) {
             return;
         }
-        View v = getView();
 
-        mOverlaySurface = (OverlayView) v.findViewById(R.id.overlaySurfaceView);
-        mUpperTextView = (TextView) v.findViewById(R.id.upperTextView);
-        mLowerTextRelativeLayout = (RelativeLayout) v.findViewById(R.id.lowerTextRelativeLayout);
-        mLowerTextSwitcher = (TextSwitcher) v.findViewById(R.id.lowerTextSwitcher);
+        LayoutOverlayObserver observer = (LayoutOverlayObserver) activity;
 
-        TextView lowerTextView = new TextView(activity);
-        lowerTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
-        lowerTextView.setGravity(Gravity.CENTER);
-        lowerTextView.setTextColor(Color.WHITE);
-        lowerTextView.setMaxLines(2);
-        lowerTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        lowerTextView.setEllipsize(TextUtils.TruncateAt.END);
+        View overlayView = observer.getLayoutOverlayView();
 
-        TextView recordingHintTextView = new TextView(activity);
-        recordingHintTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
-        recordingHintTextView.setGravity(Gravity.CENTER);
-        recordingHintTextView.setTextColor(Color.WHITE);
-        recordingHintTextView.setMaxLines(2);
-        recordingHintTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25);
-        recordingHintTextView.setEllipsize(TextUtils.TruncateAt.END);
 
-        mLowerTextSwitcher.removeAllViews();
-        mLowerTextSwitcher.addView(recordingHintTextView);
-        mLowerTextSwitcher.addView(lowerTextView);
-        mLowerTextSwitcher.setInAnimation(AnimationUtils.loadAnimation(activity,android.R.anim.fade_in));
+        if (overlayView == null) {
+            LayoutInflater inflater = (LayoutInflater) getActivity()
+                    .getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
 
-        mProgressBar = (ProgressBar) v.findViewById(R.id.photoProgressBar);
-        mProgressBar.setVisibility(View.GONE);
-        mCaptureButton = (ImageButton) v.findViewById(R.id.photoButton);
-        mCaptureButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                photoButtonPressed(v);
-            }
-        });
+            overlayView = inflater.inflate(R.layout.camera2_overlay, null);
+
+            mUpperTextView = (TextView) overlayView.findViewById(R.id.upperTextView);
+            mLowerTextSwitcher = (TextSwitcher) overlayView.findViewById(R.id.lowerTextSwitcher);
+
+            TextView lowerTextView = new TextView(activity);
+            lowerTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
+            lowerTextView.setGravity(Gravity.CENTER);
+            lowerTextView.setTextColor(Color.WHITE);
+            lowerTextView.setMaxLines(2);
+            lowerTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            lowerTextView.setEllipsize(TextUtils.TruncateAt.END);
+
+            TextView recordingHintTextView = new TextView(activity);
+            recordingHintTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
+            recordingHintTextView.setGravity(Gravity.CENTER);
+            recordingHintTextView.setTextColor(Color.WHITE);
+            recordingHintTextView.setMaxLines(2);
+            recordingHintTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25);
+            recordingHintTextView.setEllipsize(TextUtils.TruncateAt.END);
+
+            mLowerTextSwitcher.removeAllViews();
+            mLowerTextSwitcher.addView(recordingHintTextView);
+            mLowerTextSwitcher.addView(lowerTextView);
+            mLowerTextSwitcher.setInAnimation(AnimationUtils.loadAnimation(activity, android.R.anim.fade_in));
+
+            mProgressBar = (ProgressBar) overlayView.findViewById(R.id.photoProgressBar);
+            mProgressBar.setVisibility(View.GONE);
+
+            recordButton = overlayView.findViewById(R.id.photoButton);
+            recordButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    photoButtonPressed(v);
+                }
+            });
+
+
+            String upperText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT);
+            String lowerText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT);
+            setupOverlayTexts(upperText, lowerText);
+        }
+
+
+        RelativeLayout container = ((RelativeLayout) getView().findViewById(R.id.overlayViewContainer));
+        container.addView(overlayView);
+
+        if(recordButton == null) {
+            recordButton =  getView().findViewById(R.id.buttonRecord);
+            recordButton.setVisibility(View.VISIBLE);
+            recordButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    photoButtonPressed(v);
+                }
+            });
+        }
     }
 
-    private void setupOverlayTexts(String upperText, String lowerText){
+    private void setupOverlayTexts(String upperText, String lowerText) {
         if (upperText != null) {
             mUpperTextView.setText(upperText);
             mUpperTextView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
@@ -646,20 +698,21 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
     public void photoButtonPressed(View view) {
         Log.d(TAG, "photoButtonPressed");
-        if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
+        if (!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
             resumePhotoButtonPressedWithPermissions(view);
         }
     }
 
     private void resumePhotoButtonPressedWithPermissions(View view) {
-        ImageButton photoButton = (ImageButton) view;
-        photoButton.setEnabled(false);
-        photoButton.setClickable(false);
+        view.setEnabled(false);
+        view.setClickable(false);
         String recordingHint = getArguments().getString(VideoFaceCaptureActivity.EXTRA_RECORDING_HINT);
-        if(recordingHint != null) {
-            mLowerTextSwitcher.setText(recordingHint);
+        if (mLowerTextSwitcher != null) {
+            mLowerTextSwitcher.setText(recordingHint == null ? "" : recordingHint);
         }
-        mProgressBar.setVisibility(View.VISIBLE);
+        if (mProgressBar != null) {
+            mProgressBar.setVisibility(View.VISIBLE);
+        }
         startRecordingVideo();
     }
 

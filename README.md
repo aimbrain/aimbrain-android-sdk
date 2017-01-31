@@ -9,7 +9,6 @@
 SDK requires the following permissions:
 
 `android.permission.INTERNET`
-
 `android.permission.ACCESS_NETWORK_STATE`
 
 Those permissions are included in SDK’s manifest (there is no need to include it into the application’s manifest)
@@ -284,32 +283,41 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 }
 ```
 
-
 ## Recording video of user's face
 
-In order to record video containing user's face  `VideoFaceCaptureActivity` has to be started. The result can be obtained in `onActivtyResult` if result code is `RESULT_OK` using static field: `VideoFaceCaptureActivity.video`. When starting activity, three string extras may be passed: upperText - text displayed above face placeholder, lowerText - text displayed below face placeholder, recordingHint - text displayed below face placeholder, that replaces lowerText after clicking camera button. Each of the extras may be omitted - no text will be displayed in destined place. Remember to add `VideoFaceCaptureActivity` to your application's manifest file.
+In order to record video containing user's face  `VideoFaceCaptureActivity` has to be started. The result can be obtained in `onActivtyResult` if result code is `RESULT_OK` using static field: `VideoFaceCaptureActivity.video`. When starting activity, the following extras can be used to customize activity:
+* `VideoFaceCaptureActivity.EXTRA_UPPER_TEXT` - text displayed above face placeholder.
+* `VideoFaceCaptureActivity.EXTRA_LOWER_TEXT` - text displayed below face placeholder.
+* `VideoFaceCaptureActivity.EXTRA_DURATION_MILLIS` - recorded video duration.
+* `VideoFaceCaptureActivity.EXTRA_RECORDING_HINT` - text displayed below face placeholder, that replaces lowerText after clicking camera button.
+
+These extras are optional and may be omitted - no text will be displayed in destined place.
+Remember to add `VideoFaceCaptureActivity` to your application's manifest file.
 
 ```xml
 <activity android:name="com.aimbrain.sdk.faceCapture.VideoFaceCaptureActivity"/>
 ```
 
+Starting capture activity:
 ```java
 //...
 Intent intent = new Intent(this, VideoFaceCaptureActivity.class);
-intent.putExtra("upperText", upperText);
-intent.putExtra("lowerText", lowerText);
-intent.putExtra("durationMillis", 2000);
-intent.putExtra("recordingHint", recordingHint);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT, upperText);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT, lowerText);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_DURATION_MILLIS, 2000);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_RECORDING_HINT, recordingHint);
 startActivityForResult(intent, videoRequestCode);
 //...
+```
 
+Using recorded result:
+```java
 protected void onActivityResult(int requestCode, int resultCode, Intent data) {
   super.onActivityResult(requestCode, resultCode, data);
   if(requestCode == videoRequestCode && resultCode == RESULT_OK){
     this.video = VideoFaceCaptureActivity.video;
   }
 }
-
 ```
 
 ## Authenticating with the facial module
@@ -347,7 +355,7 @@ Manager.getInstance().sendProvidedFaceCapturesToAuthenticate(VideoFaceCaptureAct
 });
 ```
 
-### Serialising authenticatiion with the facial module
+### Serialising authentication with the facial module
 
 To get serialised authentication request use
 
@@ -357,7 +365,7 @@ SerializedRequest request = Manager.getInstance().getSerializedSendProvidedFaceC
 
 ## Enrolling with the facial module
 
-Enrolling with the facial module is done by calling the `sendProvidedFaceCapturesToEnroll ` method of the `Manager` class.
+Enrolling with the facial module is done by calling the `sendProvidedFaceCapturesToEnroll` method of the `Manager` class.
 An array of cropped images of the face in Bitmap format or video containing face is passed as the parameter.
 
 ```java
@@ -397,7 +405,7 @@ SerializedRequest request = Manager.getInstance().getSerializedSendProvidedFaceC
 
 ## Comparing faces
 
-Two batches of images of faces can be compared using the`compareFacesPhotos` method of the `Manager` class.
+Two batches of images of faces can be compared using the `compareFacesPhotos` method of the `Manager` class.
 The method accepts an array of images of the first face and an array of images of the second face as parameters.
 
 ```java
@@ -420,4 +428,124 @@ To get serialised face comparison request use
 
 ```java
 SerializedRequest request = Manager.getInstance().getSerializedCompareFacesPhotos(facialImages1, facialImages2, metadata)
+```
+
+# Voice module
+
+## Retrieving voice token
+
+In order to enroll or authenticate via voice module you have to record user reading text.
+
+The text is retrieved with `getVoiceToken` method. The parameter type of this method specifies use case for retrieved text. See enum `VoiceTokenType` for possible values.
+
+Text to be presented to the user is returned by the result method `getToken()`.
+
+```java
+Manager.getInstance().getVoiceToken(VoiceTokenType.AUTH, new VoiceTokenCallback() {
+  @Override
+  public void success(VoiceTokenModel tokenModel) {
+    String token = tokenModel.getToken();
+    // use token
+  }
+});
+```
+
+## Serialising voice token call
+
+To get serialised voice token request use
+```java
+SerializedRequest request = Manager.getInstance().getSerializedVoiceToken(VoiceTokenType.AUTH, metadata)
+```
+
+## Recording user voice
+
+In order to record audio containing user's voice  `VoiceCaptureActivity` has to be started.
+The result can be obtained in `onActivtyResult` if result code is `RESULT_OK` using static field `VoiceCaptureActivity.audio`.
+
+When starting activity, the following extras can be used to customize activity:
+* `VoiceCaptureActivity.EXTRA_UPPER_TEXT` - text displayed above presented token.
+* `VoiceCaptureActivity.EXTRA_RECORDING_HINT` - text for user to read.
+
+Top hint is optional and may be omitted - no text will be displayed in destined place.
+
+Remember to add `VoiceCaptureActivity` to your application's manifest file.
+
+```xml
+<activity android:name="com.aimbrain.sdk.voiceCapture.VoiceCaptureActivity"/>
+```
+
+Starting record activity:
+```java
+//...
+Intent intent = new Intent(this, VoiceCaptureActivity.class);
+intent.putExtra(VoiceCaptureActivity.EXTRA_UPPER_TEXT, upperText);
+intent.putExtra(VoiceCaptureActivity.EXTRA_RECORDING_HINT, recordingToken);
+startActivityForResult(intent, voiceRequestCode);
+//...
+```
+
+Using recorded audio:
+```java
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+  super.onActivityResult(requestCode, resultCode, data);
+  if(requestCode == voiceRequestCode && resultCode == RESULT_OK){
+    this.voice = VoiceCaptureActivity.audio;
+  }
+}
+
+```
+
+## Authenticating with the voice module
+
+In order to authenticate with the voice module use the `sendProvidedVoiceCapturesToAuthenticate` method of the `Manager` class.
+A byte array containing voice audio is passed as the parameter. The recorded audio must be token retrieved by `getVoiceToken` using type `VoiceTokenType.AUTH`.
+
+```java
+Manager.getInstance().sendProvidedVoiceCapturesToAuthenticate(VoiceCaptureActivity.audio, new VoiceCapturesAuthenticateCallback() {
+  @Override
+  public void success(VoiceAuthenticateModel voiceAuthenticateModel) {
+    // authentication succeeded
+  }
+
+  @Override
+  public void failure(VolleyError volleyError) {
+    // authentication failed
+  }
+});
+```
+
+### Serialising authentication with the voice module
+
+To get serialised authentication request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedSendProvidedVoiceCapturesToAuthenticate(VoiceCaptureActivity.audio, metadata)
+```
+
+## Enrolling with the voice module
+
+Enrolling with the voice module is done by calling the `sendProvidedVoiceCapturesToEnroll` method of the `Manager` class. A byte array containing voice audio is passed as the parameter.
+
+```java
+Manager.getInstance().sendProvidedVoiceCapturesToEnroll(VoiceCaptureActivity.audio, new VoiceCaptureEnrollCallback() {
+  @Override
+  public void success(VoiceEnrollModel voiceEnrollModel) {
+    // enroll call succesfull
+  }
+
+  @Override
+  public void failure(VolleyError volleyError) {
+    // enroll call failed
+  }
+});
+```
+
+To complete enroll you have to send recoded audios for token types `VoiceTokenType.ENROLL1`, `VoiceTokenType.ENROLL2`, `VoiceTokenType.ENROLL3`, `VoiceTokenType.ENROLL4`, `VoiceTokenType.ENROLL5`.
+
+### Serialising enrolling with the voice module request
+
+To get serialised enroll request use
+
+```java
+SerializedRequest request = Manager.getInstance().getSerializedSendProvidedVoiceCapturesToEnroll(VoiceCaptureActivity.audio, metadata)
 ```

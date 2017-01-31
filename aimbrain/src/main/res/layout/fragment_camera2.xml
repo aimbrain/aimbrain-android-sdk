@@ -1,17 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:screenOrientation="portrait"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.aimbrain.sdk.faceCapture.fragments.Camera2Fragment"
-    android:background="#000000">
+    android:background="#000000"
+    android:screenOrientation="portrait"
+    tools:context="com.aimbrain.sdk.faceCapture.fragments.Camera2Fragment">
 
     <com.aimbrain.sdk.faceCapture.AutoFitTextureView
         android:id="@+id/texture"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        />
+        android:layout_height="wrap_content" />
 
-    <include layout="@layout/camera2_overlay"/>
+    <RelativeLayout
+        android:id="@+id/overlayViewContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:layout_alignParentBottom="true"
+        android:gravity="bottom">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <com.aimbrain.sdk.faceCapture.views.RecordButton
+            android:id="@+id/buttonRecord"
+            android:clickable="true"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:visibility="gone"
+            android:layout_marginBottom="@dimen/overlay_text_vertical_margin"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
 </RelativeLayout>

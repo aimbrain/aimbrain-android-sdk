@@ -12,15 +12,22 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ImageButton
-            android:id="@+id/photoButton"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
-            android:background="#00000000"
-            android:onClick="photoButtonPressed"
-            android:src="@drawable/ic_photo_camera_white_48dp" />
+            android:id="@+id/photoButtonContainer">
+
+            <ImageButton
+                android:id="@+id/photoButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#00000000"
+                android:onClick="photoButtonPressed"
+                android:src="@drawable/ic_photo_camera_white_48dp" />
+        </LinearLayout>
 
         <RelativeLayout
             android:id="@+id/upperTextRelativeLayout"
@@ -66,7 +73,7 @@
             style="?android:attr/progressBarStyleSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_above="@+id/photoButton"
+            android:layout_above="@+id/photoButtonContainer"
             android:layout_centerHorizontal="true" />
 
     </RelativeLayout>

@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="@dimen/overlay_text_vertical_margin"
+        android:paddingBottom="@dimen/overlay_text_vertical_margin"
         android:background="#00000000"
         android:onClick="photoButtonPressed"
         android:src="@drawable/ic_photo_camera_white_48dp" />

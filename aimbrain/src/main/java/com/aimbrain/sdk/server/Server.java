@@ -16,6 +16,8 @@ import com.aimbrain.sdk.models.FaceCompareModel;
 import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
+import com.aimbrain.sdk.models.VoiceTokenModel;
+import com.aimbrain.sdk.models.VoiceTokenType;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Network;
 import com.android.volley.Request;
@@ -63,7 +65,9 @@ public class Server {
     private URL submitBehaviouralURL;
     private URL scoreURL;
     private URL faceCompare;
+    private URL voiceTokenURL;
     private HashMap<FaceActions, URL> faceActionsURLs;
+    private HashMap<VoiceActions, URL> voiceActionsURLs;
     private RequestQueue requestQueue;
     private SessionModel session;
     private LinkedList<BehaviouralDataModel> dataQueue;
@@ -92,6 +96,11 @@ public class Server {
             this.faceActionsURLs = new HashMap<>();
             this.faceActionsURLs.put(FaceActions.FACE_AUTH, new URL(baseURL, "face/auth"));
             this.faceActionsURLs.put(FaceActions.FACE_ENROLL, new URL(baseURL, "face/enroll"));
+            this.voiceTokenURL = new URL(baseURL, "voice/token");
+            this.voiceActionsURLs = new HashMap<>();
+            this.voiceActionsURLs.put(VoiceActions.VOICE_AUTH, new URL(baseURL, "voice/auth"));
+            this.voiceActionsURLs.put(VoiceActions.VOICE_ENROLL, new URL(baseURL, "voice/enroll"));
+
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
@@ -156,13 +165,14 @@ public class Server {
                             try {
                                 String session = response.get("session").toString();
                                 int face = response.getInt("face");
+                                int voice = response.getInt("voice");
                                 int behaviour = response.getInt("behaviour");
                                 byte[] metadata = null;
                                 if (response.has("metadata")) {
                                     String metadataString = response.getString("metadata");
                                     metadata = Base64.decode(metadataString, Base64.DEFAULT);
                                 }
-                                Server.this.session = new SessionModel(session, face, behaviour, metadata);
+                                Server.this.session = new SessionModel(session, face, behaviour, voice, metadata);
                                 if (sessionCallback != null) {
                                     sessionCallback.onSessionCreated(Server.this.session);
                                 }
@@ -493,5 +503,134 @@ public class Server {
         RetryPolicy policy = new DefaultRetryPolicy(SOCKET_TIMEOUT, MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT);
         request.setRetryPolicy(policy);
         requestQueue.add(request);
+    }
+
+    public void getVoiceToken(VoiceTokenType tokenType, byte[] metadata, final VoiceTokenCallback tokenCallback) throws InternalException, ConnectException, SessionException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
+
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try {
+            JSONObject jsonObject = JSONForVoiceToken(tokenType, metadata);
+            AMBNObjectRequest jsonRequest = new AMBNObjectRequest
+                    (getHeadersMap(jsonObject, this.voiceTokenURL), Request.Method.POST,
+                            this.voiceTokenURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            try {
+                                if (tokenCallback != null) {
+                                    String token = response.getString("token");
+                                    byte[] metadata = null;
+                                    if (response.has("metadata")) {
+                                        String metadataString = response.getString("metadata");
+                                        metadata = Base64.decode(metadataString, Base64.DEFAULT);
+                                    }
+                                    VoiceTokenModel tokenModel = new VoiceTokenModel(token, metadata);
+                                    tokenCallback.success(tokenModel);
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }, new AMBNResponseErrorListener());
+
+            sendRequest(jsonRequest);
+        } catch (JSONException | InvalidSignatureException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    public SerializedRequest getSerializedVoiceToken(VoiceTokenType tokenType, byte[] metadata) throws InternalException {
+        try {
+            JSONObject jsonObject = JSONForVoiceToken(tokenType, metadata);
+            return new SerializedRequest(jsonObject.toString());
+        }
+        catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    @NonNull
+    private JSONObject JSONForVoiceToken(VoiceTokenType tokenType, byte[] metadata) throws JSONException {
+        JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
+        jsonObject.put("tokentype", tokenType.toString());
+        if (metadata != null) {
+            jsonObject.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return jsonObject;
+    }
+
+    public void sendProvidedVoiceCaptures(StringListDataModel voices, byte[] metadata,
+                                          final VoiceCapturesCallback callback, VoiceActions voiceAction)
+            throws InternalException, ConnectException, SessionException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
+
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try {
+            JSONObject jsonObject = JSONForSendVoiceCaptures(voices, metadata);
+            AMBNObjectRequest jsonRequest = null;
+            try {
+                jsonRequest = new AMBNObjectRequest
+                        (getHeadersMap(jsonObject, this.voiceActionsURLs.get(voiceAction)),
+                                Request.Method.POST, this.voiceActionsURLs.get(voiceAction).toString(),
+                                jsonObject, new Response.Listener<JSONObject>() {
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                Log.d("Response", "response: " + response.toString());
+                                callback.fireSuccessAction(response);
+                            }
+                        }, new AMBNResponseErrorListener() {
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                Log.d("JSON error", error.networkResponse.data.toString());
+                                super.onErrorResponse(error);
+                                callback.failure(error);
+                            }
+                        });
+            } catch (InvalidSignatureException e) {
+                e.printStackTrace();
+            }
+            sendRequest(jsonRequest);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public SerializedRequest getSerializedSendProvidedVoiceCaptures(StringListDataModel captures,
+                                                                    byte[] metadata, VoiceActions voiceAction)
+            throws InternalException {
+        try {
+            JSONObject jsonObject = JSONForSendVoiceCaptures(captures, metadata);
+            return new SerializedRequest(jsonObject.toString());
+        }
+        catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    @NonNull
+    private JSONObject JSONForSendVoiceCaptures(StringListDataModel voice, byte[] metadata) throws JSONException {
+        JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
+        jsonObject.put("voices", voice.toJSON());
+        if (metadata != null) {
+            jsonObject.put("metadata", Base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return jsonObject;
     }
 }

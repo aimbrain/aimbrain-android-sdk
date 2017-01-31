@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AimBrain</string>
+    <string name="voice_capture_lower_text">You will have %d seconds</string>
+    <string name="voice_capture_lower_text_recording">You have %s seconds left</string>
 </resources>

@@ -3,6 +3,7 @@ package com.aimbrain.sdk.faceCapture.fragments;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
 import android.os.Bundle;
@@ -16,10 +17,9 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextSwitcher;
@@ -34,6 +34,7 @@ import com.aimbrain.sdk.faceCapture.helpers.LayoutUtil;
 import com.aimbrain.sdk.faceCapture.helpers.LegacyResolutionPicker;
 import com.aimbrain.sdk.faceCapture.helpers.ResolutionPicker;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
+import com.aimbrain.sdk.faceCapture.views.RecordButton;
 import com.aimbrain.sdk.file.Files;
 
 import java.io.IOException;
@@ -68,12 +69,12 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     protected TextView upperTextView;
     protected RelativeLayout lowerTextRelativeLayout;
     protected RelativeLayout upperTextRelativeLayout;
-    protected ImageButton captureButton;
+    protected View recordButton;
     protected ProgressBar progressBar;
 
 
     public static CameraLegacyFragment newInstance(String upperText, String lowerText, String recordingHint,
-                                              int duration) {
+                                                   int duration) {
         CameraLegacyFragment fragment = new CameraLegacyFragment();
         Bundle args = new Bundle();
         args.putString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT, upperText);
@@ -117,7 +118,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         int parentHeight = mRootView.getMeasuredHeight();
         int parentWidth = mRootView.getMeasuredWidth();
 
-        float parentRatio = parentWidth / (float)parentHeight;
+        float parentRatio = parentWidth / (float) parentHeight;
         float textureRatio = previewSurfaceView.getAspectRatio();
 
         float marginH = 0;
@@ -127,8 +128,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
             // texture is wider, margins on sides
             float expectedWidth = parentHeight * textureRatio;
             marginH = parentWidth - expectedWidth;
-        }
-        else {
+        } else {
             // texture is higher, margins on top and bottom
             float expectedHeight = parentWidth / textureRatio;
             marginV = parentHeight - expectedHeight;
@@ -202,76 +202,104 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
             VideoSize previewSize = resolution.getPreviewSize(screenSize.width, screenSize.height);
             Log.d(TAG, "camera preview size set to " + previewSize.width + "x" + previewSize.height);
 
-            previewSurfaceView.setAspectRatio(previewSize.height, previewSize.width);
-            overlaySurfaceView.setAspectRatio(previewSize.height, previewSize.width);
-
             float sizeRatio = (float) previewSize.width / (float) previewSize.height;
+
+            previewSurfaceView.setAspectRatio(previewSize.height, previewSize.width);
             previewHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
-            overlayHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
+
+            if (overlaySurfaceView != null && overlayHolder != null) {
+                overlaySurfaceView.setAspectRatio(previewSize.height, previewSize.width);
+                overlayHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
+            } else {
+                final Activity activity = getActivity();
+                if (null != activity && activity instanceof LayoutOverlayObserver) {
+                    ((LayoutOverlayObserver) activity)
+                            .setOverlayViewDimensions(previewSize.height, previewSize.width);
+                }
+            }
         }
     }
 
     private void createWithPermissions() {
-        setupCameraPreview();
         setupOverlay();
-        String upperText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT);
-        String lowerText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT);
-        setupOverlayTexts(upperText, lowerText);
+        setupCameraPreview();
     }
 
     private void setupOverlay() {
         final Activity activity = getActivity();
-        if (null == activity || activity.isFinishing()) {
+        if (null == activity || activity.isFinishing() ||
+                !(activity instanceof LayoutOverlayObserver)) {
             return;
         }
-        View v = getView();
-        controlInflater = LayoutInflater.from(activity.getBaseContext());
-        mCameraOverlay = controlInflater.inflate(R.layout.camera_overlay, null);
+
+        LayoutOverlayObserver observer = (LayoutOverlayObserver) activity;
+
+        mCameraOverlay = observer.getLayoutOverlayView();
+        if (mCameraOverlay == null) {
+            controlInflater = LayoutInflater.from(activity.getBaseContext());
+            mCameraOverlay = controlInflater.inflate(R.layout.camera_overlay, null);
+            overlaySurfaceView = (OverlaySurfaceView) mCameraOverlay.findViewById(R.id.overlaySurfaceView);
+            overlayHolder = overlaySurfaceView.getHolder();
+            overlayHolder.addCallback(overlayCallback);
+
+            upperTextRelativeLayout = (RelativeLayout) mCameraOverlay.findViewById(R.id.upperTextRelativeLayout);
+            upperTextView = (TextView) mCameraOverlay.findViewById(R.id.upperTextView);
+            lowerTextRelativeLayout = (RelativeLayout) mCameraOverlay.findViewById(R.id.lowerTextRelativeLayout);
+            lowerTextSwitcher = (TextSwitcher) mCameraOverlay.findViewById(R.id.lowerTextSwitcher);
+
+            TextView lowerTextView = new TextView(activity);
+            lowerTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
+            lowerTextView.setGravity(Gravity.CENTER);
+            lowerTextView.setTextColor(Color.WHITE);
+            lowerTextView.setMaxLines(2);
+            lowerTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            lowerTextView.setEllipsize(TextUtils.TruncateAt.END);
+
+            TextView recordingHintTextView = new TextView(activity);
+            recordingHintTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
+            recordingHintTextView.setGravity(Gravity.CENTER);
+            recordingHintTextView.setTextColor(Color.WHITE);
+            recordingHintTextView.setMaxLines(2);
+            recordingHintTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25);
+            recordingHintTextView.setEllipsize(TextUtils.TruncateAt.END);
+
+            lowerTextSwitcher.addView(recordingHintTextView);
+            lowerTextSwitcher.addView(lowerTextView);
+            lowerTextSwitcher.setInAnimation(AnimationUtils.loadAnimation(activity, android.R.anim.fade_in));
+
+            String upperText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT);
+            String lowerText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT);
+            setupOverlayTexts(upperText, lowerText);
+
+            progressBar = (ProgressBar) mCameraOverlay.findViewById(R.id.photoProgressBar);
+            progressBar.setVisibility(View.GONE);
+            recordButton = mCameraOverlay.findViewById(R.id.photoButton);
+            recordButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    photoButtonPressed(v);
+                }
+            });
+        }
+
+        if (recordButton == null) {
+            recordButton = getView().findViewById(R.id.buttonRecord);
+            recordButton.setVisibility(View.VISIBLE);
+            recordButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    photoButtonPressed(v);
+                }
+            });
+        }
+
         ViewGroup.LayoutParams layoutParamsControl
                 = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT);
-        ((ViewGroup)v.getParent()).addView(mCameraOverlay, layoutParamsControl);
-
-        overlaySurfaceView = (OverlaySurfaceView) mCameraOverlay.findViewById(R.id.overlaySurfaceView);
-        overlayHolder = overlaySurfaceView.getHolder();
-        overlayHolder.addCallback(overlayCallback);
-        upperTextRelativeLayout = (RelativeLayout) mCameraOverlay.findViewById(R.id.upperTextRelativeLayout);
-        upperTextView = (TextView) mCameraOverlay.findViewById(R.id.upperTextView);
-        lowerTextRelativeLayout = (RelativeLayout) mCameraOverlay.findViewById(R.id.lowerTextRelativeLayout);
-        lowerTextSwitcher = (TextSwitcher) mCameraOverlay.findViewById(R.id.lowerTextSwitcher);
-
-        TextView lowerTextView = new TextView(activity);
-        lowerTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
-        lowerTextView.setGravity(Gravity.CENTER);
-        lowerTextView.setTextColor(Color.WHITE);
-        lowerTextView.setMaxLines(2);
-        lowerTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        lowerTextView.setEllipsize(TextUtils.TruncateAt.END);
-
-        TextView recordingHintTextView = new TextView(activity);
-        recordingHintTextView.setTextAppearance(activity, android.R.style.TextAppearance_Medium);
-        recordingHintTextView.setGravity(Gravity.CENTER);
-        recordingHintTextView.setTextColor(Color.WHITE);
-        recordingHintTextView.setMaxLines(2);
-        recordingHintTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25);
-        recordingHintTextView.setEllipsize(TextUtils.TruncateAt.END);
-
-        lowerTextSwitcher.addView(recordingHintTextView);
-        lowerTextSwitcher.addView(lowerTextView);
-        lowerTextSwitcher.setInAnimation(AnimationUtils.loadAnimation(activity,android.R.anim.fade_in));
-
-        progressBar = (ProgressBar) mCameraOverlay.findViewById(R.id.photoProgressBar);
-        progressBar.setVisibility(View.GONE);
-        captureButton = (ImageButton) mCameraOverlay.findViewById(R.id.photoButton);
-        captureButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                photoButtonPressed(v);
-            }
-        });
+        ((ViewGroup) getView().getParent()).addView(mCameraOverlay, layoutParamsControl);
     }
 
-    private void setupOverlayTexts(String upperText, String lowerText){
+    private void setupOverlayTexts(String upperText, String lowerText) {
         if (upperText != null) {
             upperTextView.setText(upperText);
             upperTextView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
@@ -280,7 +308,9 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         if (lowerText == null) {
             lowerText = "";
         }
-        lowerTextSwitcher.setText(lowerText);
+        if (lowerTextSwitcher != null) {
+            lowerTextSwitcher.setText(lowerText);
+        }
     }
 
     private void setupCameraPreview() {
@@ -296,9 +326,10 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
         }
 
-        public void surfaceChanged(SurfaceHolder holder,
-                                   int format, int width,
-                                   int height) {
+        public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+            refreshOverlayElements();
+
             try {
                 if (camera != null) {
                     camera.setDisplayOrientation(getCameraDisplayOrientation(getFrontCameraIndex()));
@@ -307,12 +338,21 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
                     parameters.setRecordingHint(true);
 
                     ResolutionPicker resolutionPicker = getResolutionPicker(parameters);
+
                     VideoSize preview = resolutionPicker.getPreviewSize(width, height);
                     if (preview != null) {
                         Log.d(TAG, "surface changed, best size " + preview.width + "x" + preview.height);
 
                         previewSurfaceView.setAspectRatio(preview.height, preview.width);
-                        overlaySurfaceView.setAspectRatio(preview.height, preview.width);
+                        if (overlaySurfaceView != null) {
+                            overlaySurfaceView.setAspectRatio(preview.height, preview.width);
+                        } else {
+                            final Activity activity = getActivity();
+                            if (null != activity && activity instanceof LayoutOverlayObserver) {
+                                ((LayoutOverlayObserver) activity)
+                                        .setOverlayViewDimensions(preview.height, preview.width);
+                            }
+                        }
 
                         Camera.Size pictureSize = getPictureSize(preview, parameters);
                         parameters.setPreviewSize(preview.width, preview.height);
@@ -329,15 +369,18 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
                         }
 
                         camera.setParameters(parameters);
+
+                        Log.v(TAG, "Camera parameters before preview:");
+                        for (String param : parameters.flatten().split(";")) {
+                            Log.v(TAG, param);
+                        }
                         camera.startPreview();
                         inPreview = true;
                     }
                 }
             } catch (Throwable t) {
-                Log.e("surfaceCallback",
-                        "Exception in setPreviewDisplay()", t);
-                Toast.makeText(getActivity(), t.getMessage(), Toast.LENGTH_LONG)
-                        .show();
+                Log.e(TAG, "Exception in setPreviewDisplay()", t);
+                Toast.makeText(getActivity(), t.getMessage(), Toast.LENGTH_LONG).show();
             }
         }
 
@@ -365,40 +408,40 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     private Camera.Size getPictureSize(VideoSize previewSize, Camera.Parameters parameters) {
         List<Camera.Size> supportedPictureSizes = parameters.getSupportedPictureSizes();
         Camera.Size pictureSize = supportedPictureSizes.get(0);
-        float requiredRatio = (float)previewSize.width/(float)previewSize.height;
-        float bestFoundRatio = (float)pictureSize.width/(float)pictureSize.width;
+        float requiredRatio = (float) previewSize.width / (float) previewSize.height;
+        float bestFoundRatio = (float) pictureSize.width / (float) pictureSize.width;
 
-        for(Camera.Size currentSize : supportedPictureSizes) {
-            float currentRatio = (float)currentSize.width/(float)currentSize.height;
-            if(Math.abs(currentRatio-requiredRatio) < Math.abs(currentRatio-bestFoundRatio) ||
-                    (Math.abs(currentRatio-requiredRatio) == Math.abs(currentRatio-bestFoundRatio) &&
+        for (Camera.Size currentSize : supportedPictureSizes) {
+            float currentRatio = (float) currentSize.width / (float) currentSize.height;
+            if (Math.abs(currentRatio - requiredRatio) < Math.abs(currentRatio - bestFoundRatio) ||
+                    (Math.abs(currentRatio - requiredRatio) == Math.abs(currentRatio - bestFoundRatio) &&
                             currentSize.width >= pictureSize.width &&
-                            currentSize.height >= pictureSize.width))
-            {
-                pictureSize =  currentSize;
+                            currentSize.height >= pictureSize.width)) {
+                pictureSize = currentSize;
                 bestFoundRatio = currentRatio;
             }
         }
-        Log.i("PICTURE SIZE", "Chosen picture size: "+ pictureSize.width +"x"+pictureSize.height);
+        Log.i("PICTURE SIZE", "Chosen picture size: " + pictureSize.width + "x" + pictureSize.height);
         return pictureSize;
     }
 
     public void photoButtonPressed(View view) {
-        if(!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
+        if (!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
             resumePhotoButtonPressedWithPermissions(view);
         }
     }
 
     private void resumePhotoButtonPressedWithPermissions(View view) {
-        ImageButton photoButton = (ImageButton) view;
-        photoButton.setEnabled(false);
-        photoButton.setClickable(false);
+        view.setEnabled(false);
+        view.setClickable(false);
 
         CharSequence recordingHint = getArguments().getString(VideoFaceCaptureActivity.EXTRA_RECORDING_HINT);
-        if(recordingHint != null) {
+        if (recordingHint != null) {
             lowerTextSwitcher.setText(recordingHint);
         }
-        progressBar.setVisibility(View.VISIBLE);
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+        }
         captureData();
     }
 
@@ -435,28 +478,38 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         return result;
     }
 
+    private void notifyParentRecordingStopped() {
+        if (recordButton instanceof RecordButton) {
+            ((RecordButton) recordButton).stopRecording();
+        }
+        Activity activity = getActivity();
+        if (activity instanceof LayoutOverlayObserver) {
+            ((LayoutOverlayObserver) activity).onRecordingStopped();
+        }
+    }
+
     MediaRecorder.OnInfoListener mediaRecorderInfoListener = new MediaRecorder.OnInfoListener() {
         @Override
         public void onInfo(MediaRecorder mr, int what, int extra) {
-
             if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
                 releaseMediaRecorder();
+                notifyParentRecordingStopped();
                 try {
                     byte[] video = Files.readAllBytes(getActivity().openFileInput(Files.TMP_VIDEO_FILE_NAME));
                     mListener.setResultAndFinish(video);
                 } catch (IOException e) {
                     mListener.displayErrorAndFinish("Unable to read saved video file.");
                 }
-            }
-            else if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+
+            } else if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
                 releaseMediaRecorder();
+                notifyParentRecordingStopped();
                 mListener.displayErrorAndFinish("Maximum video file size reached.");
-            }
-            else if (what == MediaRecorder.MEDIA_RECORDER_INFO_UNKNOWN) {
+            } else if (what == MediaRecorder.MEDIA_RECORDER_INFO_UNKNOWN) {
                 releaseMediaRecorder();
+                notifyParentRecordingStopped();
                 mListener.displayErrorAndFinish("Unknown error.");
-            }
-            else {
+            } else {
                 Log.d("FaceCaptureActivity", "unregkognized onInfo, what = " + what + " extra = " + extra);
             }
         }
@@ -477,6 +530,14 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     }
 
     private void captureVideo() {
+        if (recordButton instanceof RecordButton) {
+            ((RecordButton) recordButton).startRecording();
+        }
+        Activity activity = getActivity();
+        if (activity instanceof LayoutOverlayObserver) {
+            ((LayoutOverlayObserver) activity).onRecordingStarted();
+        }
+
         if (prepareVideoRecorder()) {
             mediaRecorder.start();
         } else {
@@ -488,13 +549,13 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     private ResolutionPicker getResolutionPicker(Camera.Parameters parameters) {
         LegacyResolutionPicker picker = new LegacyResolutionPicker();
         List<Camera.Size> preview = parameters.getSupportedPreviewSizes();
-        for (Camera.Size size: preview) {
+        for (Camera.Size size : preview) {
             picker.addPreviewSize(size.width, size.height);
         }
 
         List<Camera.Size> video = parameters.getSupportedVideoSizes();
         if (video != null) {
-            for (Camera.Size size: video) {
+            for (Camera.Size size : video) {
                 picker.addVideoSize(size.width, size.height);
             }
         }
@@ -551,31 +612,30 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         maxConstantFps = maxConstantFps * 1000;
 
         //last choice - first range from list
-        int [] chosenFpsRange = fpsRanges.get(Camera.Parameters.PREVIEW_FPS_MIN_INDEX);
+        int[] chosenFpsRange = fpsRanges.get(Camera.Parameters.PREVIEW_FPS_MIN_INDEX);
 
         //second worse choice - first range with min fps > videoFps
-        for(int[] currentRange : fpsRanges) {
-            if(currentRange[0] > targetFps) {
+        for (int[] currentRange : fpsRanges) {
+            if (currentRange[0] > targetFps) {
                 chosenFpsRange = currentRange;
                 break;
             }
         }
 
         //third worse choice - narrowest range containing targetFps
-        for(int[] currentRange : fpsRanges) {
-            if(currentRange[0] >= targetFps && currentRange[1] <= targetFps) {
-                if(chosenFpsRange[0] >= targetFps && chosenFpsRange[1] <= targetFps) {
-                    if(chosenFpsRange[1] - chosenFpsRange[0] > currentRange[1] - currentRange[0])
+        for (int[] currentRange : fpsRanges) {
+            if (currentRange[0] >= targetFps && currentRange[1] <= targetFps) {
+                if (chosenFpsRange[0] >= targetFps && chosenFpsRange[1] <= targetFps) {
+                    if (chosenFpsRange[1] - chosenFpsRange[0] > currentRange[1] - currentRange[0])
                         chosenFpsRange = currentRange;
-                }
-                else {
+                } else {
                     chosenFpsRange = currentRange;
                 }
             }
         }
 
         //best choice - find constant rate between videoFpsMin and videoFpsMax
-        for(int[] currentRange : fpsRanges) {
+        for (int[] currentRange : fpsRanges) {
             if (currentRange[0] == currentRange[1] &&
                     currentRange[0] >= targetFps &&
                     currentRange[0] <= maxConstantFps) {
@@ -600,26 +660,44 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         return 0;
     }
 
-    private void releaseMediaRecorder(){
+    private void releaseMediaRecorder() {
         if (mediaRecorder != null) {
             mediaRecorder.reset();
             mediaRecorder.release();
             mediaRecorder = null;
-            if(camera != null)
+            if (camera != null)
                 camera.lock();
         }
     }
 
     public void refreshOverlayElements() {
-        RelativeLayout.LayoutParams lowerTextLayoutParams = (RelativeLayout.LayoutParams) lowerTextRelativeLayout.getLayoutParams();
-        lowerTextLayoutParams.height = getLowerTextHeight();
-        lowerTextLayoutParams.setMargins(0, getLowerTextTopMargin(), 0, 0);
-        lowerTextSwitcher.requestLayout();
-        RelativeLayout.LayoutParams upperTextLayoutParams = (RelativeLayout.LayoutParams) upperTextView.getLayoutParams();
-        upperTextLayoutParams.height = (int) overlaySurfaceView.getMaskBounds().top;
-        upperTextView.requestLayout();
-        RelativeLayout.LayoutParams photoButtonLayoutParams = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
-        photoButtonLayoutParams.setMargins(0, 0, 0, getPhotoButtonBottomMargin());
+        if (lowerTextRelativeLayout != null) {
+            RelativeLayout.LayoutParams lowerTextLayoutParams = (RelativeLayout.LayoutParams) lowerTextRelativeLayout.getLayoutParams();
+            lowerTextLayoutParams.height = getLowerTextHeight();
+            lowerTextLayoutParams.setMargins(0, getLowerTextTopMargin(), 0, 0);
+            lowerTextSwitcher.requestLayout();
+        }
+
+        if (upperTextView != null) {
+            RelativeLayout.LayoutParams upperTextLayoutParams = (RelativeLayout.LayoutParams) upperTextView.getLayoutParams();
+            upperTextLayoutParams.height = (int) overlaySurfaceView.getMaskBounds().top;
+            upperTextView.requestLayout();
+        }
+
+        if (recordButton != null) {
+            LinearLayout.LayoutParams photoButtonLayoutParams = (LinearLayout.LayoutParams) recordButton.getLayoutParams();
+
+            int padding = getPhotoButtonBottomMargin();
+            photoButtonLayoutParams.setMargins(0, 0, 0, padding);
+
+            recordButton.setLayoutParams(photoButtonLayoutParams);
+            recordButton.requestLayout();
+            if (getActivity() instanceof LayoutOverlayObserver) {
+                ((LayoutOverlayObserver) getActivity()).setRecordButtonPosition(
+                        new Rect(recordButton.getLeft(), recordButton.getTop() - padding,
+                                recordButton.getRight(), recordButton.getBottom() - padding));
+            }
+        }
     }
 
     private int getLowerTextTopMargin() {
@@ -632,7 +710,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
     private int getLowerTextBottomMargin() {
         int margin_size = 10 + screenSize.height - overlayHolder.getSurfaceFrame().height();
-        int photoButtonSpinnerTop = getPhotoButtonBottomMargin() + captureButton.getHeight() + 12;
+        int photoButtonSpinnerTop = getPhotoButtonBottomMargin() + recordButton.getHeight() + 12;
         return margin_size > photoButtonSpinnerTop ? margin_size : photoButtonSpinnerTop;
     }
 
@@ -640,8 +718,8 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         if (!previewSurfaceView.hasValidAspectRatio()) {
             return 0;
         }
-
-        return (int) ((mRootView.getMeasuredHeight() - screenSize.width / previewSurfaceView.getAspectRatio() - dipToPixels(getActivity(), 48)) / 2);
+        int totalHeight = mRootView.getMeasuredHeight() - previewSurfaceView.getHeight();
+        return  (totalHeight - recordButton.getHeight()) / 2;
     }
 
     public static float dipToPixels(Context context, float dipValue) {

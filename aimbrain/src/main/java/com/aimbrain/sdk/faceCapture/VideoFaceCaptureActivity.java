@@ -7,8 +7,10 @@ import android.app.Fragment;
 import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -17,11 +19,13 @@ import com.aimbrain.sdk.array.Arrays;
 import com.aimbrain.sdk.faceCapture.fragments.Camera2Fragment;
 import com.aimbrain.sdk.faceCapture.fragments.CameraLegacyFragment;
 import com.aimbrain.sdk.faceCapture.fragments.AbstractCameraPermissionFragment;
+import com.aimbrain.sdk.faceCapture.fragments.LayoutOverlayObserver;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy.CameraChoice;
 
 
-public class VideoFaceCaptureActivity extends Activity implements AbstractCameraPermissionFragment.ActivityCallback {
+public class VideoFaceCaptureActivity extends Activity
+        implements AbstractCameraPermissionFragment.ActivityCallback, LayoutOverlayObserver {
 
     public static final String EXTRA_DURATION_MILLIS = "durationMillis";
     /**
@@ -127,4 +131,28 @@ public class VideoFaceCaptureActivity extends Activity implements AbstractCamera
             }
         }
     }
+
+    @Override
+    public View getLayoutOverlayView() {
+        return null;
+    }
+
+    @Override
+    public void onRecordingStarted() {
+    }
+
+    @Override
+    public void onRecordingStopped() {
+    }
+
+    @Override
+    public void setOverlayViewDimensions(int height, int width) {
+    }
+
+    @Override
+    public void setRecordButtonPosition(Rect position) {
+
+    }
+
+
 }

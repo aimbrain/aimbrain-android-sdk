@@ -11,11 +11,17 @@ import com.aimbrain.sdk.models.EventModel;
 import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
+import com.aimbrain.sdk.models.VoiceTokenType;
 import com.aimbrain.sdk.server.FaceActions;
 import com.aimbrain.sdk.server.FaceCompareCallback;
 import com.aimbrain.sdk.server.FaceCapturesAuthenticateCallback;
 import com.aimbrain.sdk.server.FaceCapturesCallback;
 import com.aimbrain.sdk.server.FaceCapturesEnrollCallback;
+import com.aimbrain.sdk.server.VoiceActions;
+import com.aimbrain.sdk.server.VoiceCaptureEnrollCallback;
+import com.aimbrain.sdk.server.VoiceCapturesAuthenticateCallback;
+import com.aimbrain.sdk.server.VoiceCapturesCallback;
+import com.aimbrain.sdk.server.VoiceTokenCallback;
 import com.android.volley.Response;
 import com.aimbrain.sdk.AMBNApplication.AMBNApplication;
 import com.aimbrain.sdk.activityCallback.AMBNActivityLifecycleCallback;
@@ -174,7 +180,8 @@ public class Manager {
      * @param sessionId existing session id
      */
     public void configure(String sessionId) {
-        SessionModel model = new SessionModel(sessionId, SessionModel.NOT_ENROLLED, SessionModel.NOT_ENROLLED, null);
+        SessionModel model = new SessionModel(sessionId, SessionModel.NOT_ENROLLED,
+                SessionModel.NOT_ENROLLED, SessionModel.NOT_ENROLLED, null);
         this.server = new Server(model);
     }
 
@@ -570,6 +577,134 @@ public class Manager {
         return server.getSerializedCompareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), metadata);
     }
 
+    /**
+     * Sends audio to enroll endpoint on the server.
+     *
+     * @param audio                      audio to send
+     * @param voiceCapturesEnrollCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedVoiceCapturesToEnroll(byte[] audio, VoiceCaptureEnrollCallback voiceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
+        this.sendProvidedVoiceCapturesToEnroll(audio, null, voiceCapturesEnrollCallback);
+    }
+
+    /**
+     * Sends audio to enroll endpoint on the server.
+     *
+     * @param audio                      audio to send
+     * @param metadata                   request metadata
+     * @param voiceCapturesEnrollCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedVoiceCapturesToEnroll(byte[] audio, byte[] metadata,
+                                                  VoiceCaptureEnrollCallback voiceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
+        sendVoiceCaptures(encodeVideo(audio), metadata, VoiceActions.VOICE_ENROLL, voiceCapturesEnrollCallback);
+    }
+
+    /**
+     * Retrieves serialized request of sending audio to enroll endpoint on the server.
+     *
+     * @param audio    audio to send
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSendProvidedVoiceCapturesToEnroll(byte[] audio, byte[] metadata) throws InternalException {
+        return getSerializedSendVoiceCaptures(encodeVideo(audio), metadata, VoiceActions.VOICE_ENROLL);
+    }
+
+    /**
+     * Sends audio to authentication endpoint on the server.
+     *
+     * @param audio                            audio to send
+     * @param voiceCapturesAuthenticateCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedVoiceCapturesToAuthenticate(byte[] audio, VoiceCapturesAuthenticateCallback voiceCapturesAuthenticateCallback) throws InternalException, ConnectException, SessionException {
+        this.sendProvidedVoiceCapturesToAuthenticate(audio, null, voiceCapturesAuthenticateCallback);
+    }
+
+    /**
+     * Sends audio to authentication endpoint on the server.
+     *
+     * @param audio                            audio to send
+     * @param metadata                         request metadata
+     * @param voiceCapturesAuthenticateCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void sendProvidedVoiceCapturesToAuthenticate(byte[] audio, byte[] metadata,
+                                                        VoiceCapturesAuthenticateCallback voiceCapturesAuthenticateCallback) throws InternalException, ConnectException, SessionException {
+        sendVoiceCaptures(encodeVideo(audio), metadata, VoiceActions.VOICE_AUTH, voiceCapturesAuthenticateCallback);
+    }
+
+    /**
+     * Retrieves serialized request of sending audio to authentication endpoint on the server.
+     *
+     * @param audio    audio to send
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedSendProvidedVoiceCapturesToAuthenticate(byte[] audio, byte[] metadata) throws InternalException {
+        return getSerializedSendVoiceCaptures(encodeVideo(audio), metadata, VoiceActions.VOICE_AUTH);
+    }
+
+    /**
+     * Sends request for voice token to the server.
+     *
+     * @param tokenType     token type
+     * @param tokenCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void getVoiceToken(VoiceTokenType tokenType, VoiceTokenCallback tokenCallback)
+            throws InternalException, SessionException, ConnectException {
+        this.getVoiceToken(tokenType, null, tokenCallback);
+    }
+
+    /**
+     * Sends request for current score to the server.
+     *
+     * @param tokenType     token type
+     * @param metadata      request metadata
+     * @param tokenCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void getVoiceToken(VoiceTokenType tokenType, byte[] metadata, VoiceTokenCallback tokenCallback)
+            throws InternalException, SessionException, ConnectException {
+        server.getVoiceToken(tokenType, metadata, tokenCallback);
+    }
+
+    /**
+     * Retrieves serialized request of request for voice token.
+     *
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedVoiceToken(VoiceTokenType tokenType, byte[] metadata) throws InternalException, SessionException {
+        if (this.server == null) {
+            throw new IllegalStateException("Server is not configured properly.");
+        }
+
+        return server.getSerializedVoiceToken(tokenType, metadata);
+    }
+
+
     private StringListDataModel encodePhotos(List<Bitmap> photos) {
         ArrayList<String> encoded = new ArrayList<>();
         for (Bitmap photo : photos) {
@@ -598,6 +733,17 @@ public class Manager {
 
     public SessionModel getSession() {
         return server.getSession();
+    }
+
+    private void sendVoiceCaptures(StringListDataModel captures, byte[] metadata,
+                                   VoiceActions voiceAction, VoiceCapturesCallback voiceCapturesCallback)
+            throws InternalException, ConnectException, SessionException {
+        server.sendProvidedVoiceCaptures(captures, metadata, voiceCapturesCallback, voiceAction);
+    }
+
+    private SerializedRequest getSerializedSendVoiceCaptures(StringListDataModel captures, byte[] metadata,
+                                                             VoiceActions voiceAction) throws InternalException {
+        return server.getSerializedSendProvidedVoiceCaptures(captures, metadata, voiceAction);
     }
 }
 
