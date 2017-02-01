@@ -1,5 +1,7 @@
 # AimBrain SDK integration
 
+For full documentation and references please see: [https://docs.aimbrain.com](https://docs.aimbrain.com)
+
 ## Requirements
 
 * Android 4.0.x (API 14) or later
