@@ -40,7 +40,10 @@ import com.aimbrain.sdk.server.SessionCallback;
 
 import java.net.ConnectException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.WeakHashMap;
@@ -143,10 +146,14 @@ public class Manager {
             timer.cancel();
             timer = null;
         }
-        for (Window window : windowsMap.keySet()) {
-            window.setCallback(windowsMap.get(window).getLocalCallback());
-            windowsMap.remove(window);
+        Iterator<Entry<Window, AMBNWindowCallback>> windowIterator = windowsMap.entrySet().iterator();
+        while (windowIterator.hasNext()) {
+            Entry<Window, AMBNWindowCallback> item = windowIterator.next();
+            Window window = item.getKey();
+            window.setCallback(item.getValue().getLocalCallback());
+            windowIterator.remove();
         }
+
         TextEventCollector.getInstance().stop();
     }
 

@@ -71,7 +71,7 @@ public class ViewIdMapper {
             return null;
         if(SensitiveViewGuard.isViewSensitive(view))
             return SensitiveViewGuard.calculateHash(getViewId(view) + SensitiveViewGuard.getSalt());
-        return SensitiveViewGuard.calculateHash(getViewId(view));
+        return getViewId(view);
     }
 
     public String getViewId(View view) {

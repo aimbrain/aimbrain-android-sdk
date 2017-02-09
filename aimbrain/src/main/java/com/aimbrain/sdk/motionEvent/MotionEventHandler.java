@@ -27,21 +27,30 @@ public class MotionEventHandler {
     }
 
     public void touchCaptured(MotionEvent motionEvent, long timestamp, Window window) {
-        ViewGroup rootView = (ViewGroup)window.getDecorView();
-        View view = findTargetView(rootView, motionEvent);
+        Log.i("Handler", "Touch captured:" + motionEvent.getAction());
+
+        View view = findViewBelowMotionEvent(motionEvent, window);
 
         if(!Manager.getInstance().isViewIgnored(view)) {
             SensorEventCollector.getInstance().startCollectingData(500);
-            MotionEventCollector.getInstance().processMotionEvent(motionEvent, view, timestamp);
         }
+
+        MotionEventCollector.getInstance().processMotionEvent(motionEvent, view, timestamp);
     }
 
-    private View findTargetView(ViewGroup viewGroup, MotionEvent motionEvent) {
+    private View findViewBelowMotionEvent(MotionEvent event, Window window) {
+        ViewGroup rootView = (ViewGroup)window.getDecorView();
+        float x = event.getRawX();
+        float y = event.getRawY();
+        return findViewAtWindowPoint(rootView, x, y);
+    }
+
+    private View findViewAtWindowPoint(ViewGroup viewGroup, float x, float y) {
         for (int i = viewGroup.getChildCount()-1; i >= 0; i--) {
             final View child = viewGroup.getChildAt(i);
-            if(isInsideTheView(motionEvent, child)) {
+            if(isPointInView(x, y, child)) {
                 if (child instanceof ViewGroup) {
-                    return findTargetView((ViewGroup) child, motionEvent);
+                    return findViewAtWindowPoint((ViewGroup) child, x, y);
                 }
                 return child;
             }
@@ -49,15 +58,12 @@ public class MotionEventHandler {
         return viewGroup;
     }
 
-    private boolean isInsideTheView(MotionEvent motionEvent, View view){
-        float motionX = motionEvent.getRawX();
-        float motionY = motionEvent.getRawY();
+    private boolean isPointInView(float x, float y, View view){
         Rect outRect = new Rect();
         int[] viewStartLocation = new int[2];
         view.getDrawingRect(outRect);
         view.getLocationOnScreen(viewStartLocation);
         outRect.offset(viewStartLocation[0], viewStartLocation[1]);
-        return outRect.contains((int)motionX, (int)motionY);
+        return outRect.contains((int)x, (int)y);
     }
-
 }
