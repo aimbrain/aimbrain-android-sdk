@@ -32,6 +32,17 @@ If no `Application` class extensions are needed, use `com.aimbrain.sdk.AMBNAppli
 <application android:name=“com.aimbrain.sdk.AMBNApplication.AMBNApplication”>
   ```
 
+## Logging configuration
+SDK has configurable logging level. To change logging level change `Logger` class field to :
+
+```java
+import com.aimbrain.sdk.util.Logger;
+...
+Logger.LEVEL = Logger.VERBOSE;
+```
+
+Available log levels (in increasing verbosity order) `Logger.ERROR`, `Logger.WARN`, `Logger.INFO`, `Logger.DEBUG`, `Logger.VERBOSE`.
+
 ## Configuration
 In order to communicate with the server, the application identifier and secret need to be passed with each request. Relevant configuration parameters should be passed to the SDK with use of `Manager`’s `configure` method.
 

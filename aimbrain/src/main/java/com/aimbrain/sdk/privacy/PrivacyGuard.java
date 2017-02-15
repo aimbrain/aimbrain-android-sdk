@@ -3,6 +3,8 @@ package com.aimbrain.sdk.privacy;
 import android.view.View;
 import android.view.ViewParent;
 
+import com.aimbrain.sdk.util.Logger;
+
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,6 +16,7 @@ import java.util.Set;
  * Typical use case is to store reference to this object as long as there is need to exclude given views from capturing. Then call {@link #invalidate() invalidate} method and remove the reference.
  */
 public class PrivacyGuard {
+    public static final String TAG = PrivacyGuard.class.getSimpleName();
 
     private Set<WeakReference<View>> ignoredViews;
     private boolean ignoreAllViews;
@@ -24,6 +27,7 @@ public class PrivacyGuard {
      * @param ignoredViews set of protected views
      */
     public PrivacyGuard(Set<View> ignoredViews) {
+        Logger.v(TAG, "privacy guard, " + ignoredViews.size() + " views");
         this.ignoreAllViews = false;
         this.valid = true;
         this.ignoredViews = new HashSet<>();
@@ -36,6 +40,7 @@ public class PrivacyGuard {
      * @param ignoreAllViews true if all views in the application should be protected
      */
     public PrivacyGuard(boolean ignoreAllViews) {
+        Logger.v(TAG, "privacy guard, all views");
         this.ignoreAllViews = ignoreAllViews;
         this.ignoredViews = new HashSet<>();
         this.valid = true;

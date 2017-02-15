@@ -9,7 +9,6 @@ import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -36,6 +35,7 @@ import com.aimbrain.sdk.faceCapture.helpers.ResolutionPicker;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
 import com.aimbrain.sdk.faceCapture.views.RecordButton;
 import com.aimbrain.sdk.file.Files;
+import com.aimbrain.sdk.util.Logger;
 
 import java.io.IOException;
 import java.util.List;
@@ -151,7 +151,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
-        Log.d(TAG, "onViewCreated()");
+        Logger.d(TAG, "onViewCreated()");
         if (!requestPermissionsNeeded(PERMISSIONS_REQUEST_CREATE)) {
             createWithPermissions();
         }
@@ -175,7 +175,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
             camera = Camera.open(getFrontCameraIndex());
             setupSurfaceViewsSize();
         } catch (RuntimeException e) {
-            e.printStackTrace();
+            Logger.w(TAG, "setup camera", e);
             if (camera != null) {
                 camera.release();
                 camera = null;
@@ -197,10 +197,10 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
     protected void setupSurfaceViewsSize() {
         if (camera != null) {
-            Log.d(TAG, screenSize.toString());
+            Logger.d(TAG, screenSize.toString());
             ResolutionPicker resolution = getResolutionPicker(camera.getParameters());
             VideoSize previewSize = resolution.getPreviewSize(screenSize.width, screenSize.height);
-            Log.d(TAG, "camera preview size set to " + previewSize.width + "x" + previewSize.height);
+            Logger.d(TAG, "camera preview size set to " + previewSize.width + "x" + previewSize.height);
 
             float sizeRatio = (float) previewSize.width / (float) previewSize.height;
 
@@ -341,7 +341,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
                     VideoSize preview = resolutionPicker.getPreviewSize(width, height);
                     if (preview != null) {
-                        Log.d(TAG, "surface changed, best size " + preview.width + "x" + preview.height);
+                        Logger.d(TAG, "surface changed, best size " + preview.width + "x" + preview.height);
 
                         previewSurfaceView.setAspectRatio(preview.height, preview.width);
                         if (overlaySurfaceView != null) {
@@ -370,16 +370,16 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
 
                         camera.setParameters(parameters);
 
-                        Log.v(TAG, "Camera parameters before preview:");
+                        Logger.v(TAG, "Camera parameters before preview:");
                         for (String param : parameters.flatten().split(";")) {
-                            Log.v(TAG, param);
+                            Logger.v(TAG, param);
                         }
                         camera.startPreview();
                         inPreview = true;
                     }
                 }
             } catch (Throwable t) {
-                Log.e(TAG, "Exception in setPreviewDisplay()", t);
+                Logger.e(TAG, "Exception in setPreviewDisplay()", t);
                 Toast.makeText(getActivity(), t.getMessage(), Toast.LENGTH_LONG).show();
             }
         }
@@ -421,7 +421,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
                 bestFoundRatio = currentRatio;
             }
         }
-        Log.i("PICTURE SIZE", "Chosen picture size: " + pictureSize.width + "x" + pictureSize.height);
+        Logger.i(TAG, "Chosen picture size: " + pictureSize.width + "x" + pictureSize.height);
         return pictureSize;
     }
 
@@ -474,7 +474,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
-        Log.d("FaceCaptureActivity", "result " + result);
+        Logger.d(TAG, "result " + result);
         return result;
     }
 
@@ -510,7 +510,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
                 notifyParentRecordingStopped();
                 mListener.displayErrorAndFinish("Unknown error.");
             } else {
-                Log.d("FaceCaptureActivity", "unregkognized onInfo, what = " + what + " extra = " + extra);
+                Logger.d(TAG, "unreckognized onInfo, what = " + what + " extra = " + extra);
             }
         }
 
@@ -519,7 +519,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     MediaRecorder.OnErrorListener mediaRecorderErrorListener = new MediaRecorder.OnErrorListener() {
         @Override
         public void onError(MediaRecorder mr, int what, int extra) {
-            Log.d("FaceCaptureActivity", "onError, what = " + what + " extra = " + extra);
+            Logger.d(TAG, "onError, what = " + what + " extra = " + extra);
             releaseMediaRecorder();
             mListener.displayErrorAndFinish("Unable to record video.");
         }

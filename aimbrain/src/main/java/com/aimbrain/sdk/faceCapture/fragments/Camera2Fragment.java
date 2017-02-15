@@ -23,7 +23,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.util.TypedValue;
@@ -35,7 +34,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.animation.AnimationUtils;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextSwitcher;
@@ -49,6 +47,7 @@ import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
 import com.aimbrain.sdk.faceCapture.views.RecordButton;
 import com.aimbrain.sdk.file.Files;
+import com.aimbrain.sdk.util.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -349,7 +348,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
             }
 
             String cameraId = CameraChoiceStrategy.getPreferredCameraId(manager);
-            Log.d(TAG, "Using camera" + cameraId);
+            Logger.d(TAG, "Using camera" + cameraId);
 
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
@@ -443,7 +442,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
             }, mBackgroundHandler);
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Error starting preview", e);
+            Logger.e(TAG, "Error starting preview", e);
         }
     }
 
@@ -460,7 +459,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
             thread.start();
             mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, mBackgroundHandler);
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Error updating preview", e);
+            Logger.e(TAG, "Error updating preview", e);
         }
     }
 
@@ -581,7 +580,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
                 }
             }, mBackgroundHandler);
         } catch (CameraAccessException | IOException e) {
-            Log.e(TAG, "Error starting recording", e);
+            Logger.e(TAG, "Error starting recording", e);
         }
     }
 
@@ -697,7 +696,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
 
     public void photoButtonPressed(View view) {
-        Log.d(TAG, "photoButtonPressed");
+        Logger.d(TAG, "photoButtonPressed");
         if (!requestPermissionsNeeded(PERMISSIONS_REQUEST_CAMERA_BUTTON)) {
             resumePhotoButtonPressedWithPermissions(view);
         }
@@ -722,20 +721,20 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
             stopRecordingVideo();
 
             if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
-                Log.d(TAG, "record success ");
+                Logger.d(TAG, "record success ");
                 try {
                     byte[] video = Files.readAllBytes(getActivity().openFileInput(Files.TMP_VIDEO_FILE_NAME));
-                    Log.d(TAG, "video bytes size " + video.length);
+                    Logger.d(TAG, "video bytes size " + video.length);
                     mListener.setResultAndFinish(video);
                 } catch (IOException e) {
-                    Log.e(TAG, "Unable to read saved video file.");
+                    Logger.e(TAG, "Unable to read saved video file.");
                     mListener.displayErrorAndFinish("Unable to read saved video file.");
                 }
             } else if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
-                Log.e(TAG, "Maximum video file size reached.");
+                Logger.e(TAG, "Maximum video file size reached.");
                 mListener.displayErrorAndFinish("Maximum video file size reached.");
             } else {
-                Log.e(TAG, "Unknown error.");
+                Logger.e(TAG, "Unknown error.");
                 mListener.displayErrorAndFinish("Unknown error.");
             }
         }
@@ -746,7 +745,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
         public void onError(MediaRecorder mr, int what, int extra) {
             //stopRecordingVideo();
             //todo release media recorder
-            Log.e(TAG, "Unable to record video.");
+            Logger.e(TAG, "Unable to record video.");
             mListener.displayErrorAndFinish("Unable to record video.");
         }
     };

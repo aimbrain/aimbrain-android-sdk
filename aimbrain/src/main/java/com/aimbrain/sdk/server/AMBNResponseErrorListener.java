@@ -1,7 +1,6 @@
 package com.aimbrain.sdk.server;
 
-import android.util.Log;
-
+import com.aimbrain.sdk.util.Logger;
 import com.android.volley.NetworkResponse;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -11,6 +10,8 @@ import org.json.JSONObject;
 
 
 public class AMBNResponseErrorListener implements Response.ErrorListener {
+    private static final String TAG = AMBNResponseErrorListener.class.getSimpleName();
+
     @Override
     public void onErrorResponse(VolleyError error) {
         error.printStackTrace();
@@ -44,6 +45,6 @@ public class AMBNResponseErrorListener implements Response.ErrorListener {
     }
 
     public void displayMessage(String errorMessage, int statusCode){
-        Log.w("RESPONSE ERROR MESSAGE", "ERROR " + statusCode + ": " +errorMessage);
+        Logger.w(TAG, "Error " + statusCode + ": " +errorMessage);
     }
 }

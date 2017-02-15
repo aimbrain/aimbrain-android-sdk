@@ -1,17 +1,18 @@
 package com.aimbrain.sdk.collectors;
 
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
 import com.aimbrain.sdk.Manager;
 import com.aimbrain.sdk.models.TouchEventModel;
 import com.aimbrain.sdk.privacy.SensitiveViewGuard;
+import com.aimbrain.sdk.util.Logger;
 
 import java.util.HashMap;
 
 
 public class MotionEventCollector extends EventCollector {
+    private static final String TAG = MotionEventCollector.class.getSimpleName();
 
     private int mTouchIdCount;
     private int mPointerCount;
@@ -84,12 +85,12 @@ public class MotionEventCollector extends EventCollector {
         int action = motionEvent.getActionMasked();
         if (action == MotionEvent.ACTION_POINTER_UP || action == MotionEvent.ACTION_POINTER_DOWN) {
             int pointerIndex = motionEvent.getActionIndex();
-            Log.i("TOUCH", "action:" + action + " pointerIndex:" + pointerIndex + " pointerId:" + motionEvent.getPointerId(pointerIndex));
+            Logger.v(TAG, "motion event, action:" + action + " pointerIndex:" + pointerIndex + " pointerId:" + motionEvent.getPointerId(pointerIndex));
             processMotionEvent(motionEvent, view, timestamp, pointerIndex);
         } else {
             int pointerCount = motionEvent.getPointerCount();
             for (int i = 0; i < pointerCount; i++) {
-                Log.i("TOUCH", "action:" + action + " pointerIndex:" + i + " pointerId:" + motionEvent.getPointerId(i));
+                Logger.v(TAG, "motion event, action:" + action + " pointerIndex:" + i + " pointerId:" + motionEvent.getPointerId(i));
                 processMotionEvent(motionEvent, view, timestamp, i);
             }
         }

@@ -24,7 +24,8 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Build;
-import android.util.Log;
+
+import com.aimbrain.sdk.util.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,7 +43,6 @@ public class VideoResizer {
 
    private static final String TAG = "VideoResizer";
    private static final boolean WORK_AROUND_BUGS = false; // avoid fatal codec bugs
-   private static final boolean VERBOSE = true; // lots of logging
 
    // parameters for the encoder
    public static final int FPS_30 = 30; // 30fps
@@ -93,7 +93,7 @@ public class VideoResizer {
 
    public void setOutputResolution(int width, int height ) {
       if ( ( width % 16 ) != 0 || ( height % 16 ) != 0 ) {
-         Log.w( TAG, "WARNING: width or height not multiple of 16" );
+         Logger.w( TAG, "WARNING: width or height not multiple of 16" );
       }
       mWidth = width;
       mHeight = height;
@@ -204,7 +204,7 @@ public class VideoResizer {
          resampleVideo( extractor, decoder);
 
       } catch (IOException e) {
-         e.printStackTrace();
+         Logger.w(TAG, "resize video", e);
       } finally {
 
          if ( mOutputSurface != null ) {
@@ -224,13 +224,13 @@ public class VideoResizer {
    
    private MediaExtractor setupExtractorForClip() {
 
-      Log.d(TAG, "input uri " + mInputUri.toString());
+      Logger.d(TAG, "input uri " + mInputUri.toString());
 
       MediaExtractor extractor = new MediaExtractor();
       try {
          extractor.setDataSource(mInputUri.toString());
       } catch ( IOException e ) {
-         e.printStackTrace();
+         Logger.w(TAG, "setup extractor", e);
          return null;
       }
 
@@ -287,8 +287,7 @@ public class VideoResizer {
       boolean decoderDone = false;
       
       while ( !outputDone ) {
-         if ( VERBOSE )
-            Log.d( TAG, "edit loop" );
+         Logger.v( TAG, "edit loop" );
          // Feed more data to the decoder.
          if ( !inputDone ) {
             int inputBufIndex = decoder.dequeueInputBuffer( TIMEOUT_USEC );
@@ -297,8 +296,7 @@ public class VideoResizer {
                   // End of stream -- send empty frame with EOS flag set.
                   decoder.queueInputBuffer( inputBufIndex, 0, 0, 0L, MediaCodec.BUFFER_FLAG_END_OF_STREAM );
                   inputDone = true;
-                  if ( VERBOSE )
-                     Log.d( TAG, "sent input EOS (with zero-length frame)" );
+                  Logger.v( TAG, "sent input EOS (with zero-length frame)" );
                } else {
                   // Copy a chunk of input to the decoder. The first chunk should have
                   // the BUFFER_FLAG_CODEC_CONFIG flag set.
@@ -307,10 +305,10 @@ public class VideoResizer {
 
                   int sampleSize = extractor.readSampleData( inputBuf, 0 );
                   if ( sampleSize < 0 ) {
-                     Log.d( TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM" );
+                     Logger.d( TAG, "InputBuffer BUFFER_FLAG_END_OF_STREAM" );
                      decoder.queueInputBuffer( inputBufIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM );
                   } else {
-                     Log.d( TAG, "InputBuffer ADVANCING" );
+                     Logger.d( TAG, "InputBuffer ADVANCING" );
                      decoder.queueInputBuffer( inputBufIndex, 0, sampleSize, extractor.getSampleTime(), 0 );
                      extractor.advance();
                   }
@@ -318,8 +316,7 @@ public class VideoResizer {
                   inputChunk++;
                }
             } else {
-               if ( VERBOSE )
-                  Log.d( TAG, "input buffer not available" );
+               Logger.v( TAG, "input buffer not available" );
             }
          }
          
@@ -332,13 +329,11 @@ public class VideoResizer {
             int encoderStatus = mEncoder.dequeueOutputBuffer( info, TIMEOUT_USEC );
             if ( encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER ) {
                // no output available yet
-               if ( VERBOSE )
-                  Log.d( TAG, "no output from encoder available" );
+               Logger.v( TAG, "no output from encoder available" );
                encoderOutputAvailable = false;
             } else if ( encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ) {
                encoderOutputBuffers = mEncoder.getOutputBuffers();
-               if ( VERBOSE )
-                  Log.d( TAG, "encoder output buffers changed" );
+               Logger.v( TAG, "encoder output buffers changed" );
             } else if ( encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ) {
 
                MediaFormat newFormat = mEncoder.getOutputFormat();
@@ -346,8 +341,7 @@ public class VideoResizer {
                mTrackIndex = mMuxer.addTrack( newFormat );
                mMuxer.start();
                mMuxerStarted = true;
-               if ( VERBOSE )
-                  Log.d( TAG, "encoder output format changed: " + newFormat );
+               Logger.v( TAG, "encoder output format changed: " + newFormat );
             } else if ( encoderStatus < 0 ) {
                // fail( "unexpected result from encoder.dequeueOutputBuffer: " + encoderStatus );
             } else { // encoderStatus >= 0
@@ -363,8 +357,7 @@ public class VideoResizer {
 
                   mMuxer.writeSampleData( mTrackIndex, encodedData, info );
 
-                  if ( VERBOSE )
-                     Log.d( TAG, "encoder output " + info.size + " bytes" );
+                  Logger.v( TAG, "encoder output " + info.size + " bytes" );
                }
                outputDone = ( info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM ) != 0;
 
@@ -386,23 +379,19 @@ public class VideoResizer {
                int decoderStatus = decoder.dequeueOutputBuffer( info, TIMEOUT_USEC );
                if ( decoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER ) {
                   // no output available yet
-                  if ( VERBOSE )
-                     Log.d( TAG, "no output from decoder available" );
+                  Logger.v( TAG, "no output from decoder available" );
                   decoderOutputAvailable = false;
                } else if ( decoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED ) {
                   // decoderOutputBuffers = decoder.getOutputBuffers();
-                  if ( VERBOSE )
-                     Log.d( TAG, "decoder output buffers changed (we don't care)" );
+                  Logger.v( TAG, "decoder output buffers changed (we don't care)" );
                } else if ( decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ) {
                   // expected before first buffer of data
                   MediaFormat newFormat = decoder.getOutputFormat();
-                  if ( VERBOSE )
-                     Log.d( TAG, "decoder output format changed: " + newFormat );
+                  Logger.v( TAG, "decoder output format changed: " + newFormat );
                } else if ( decoderStatus < 0 ) {
                   // fail( "unexpected result from decoder.dequeueOutputBuffer: " + decoderStatus );
                } else { // decoderStatus >= 0
-                  if ( VERBOSE )
-                     Log.d( TAG, "surface decoder given buffer " + decoderStatus + " (size=" + info.size + ")" );
+                  Logger.v( TAG, "surface decoder given buffer " + decoderStatus + " (size=" + info.size + ")" );
                   // The ByteBuffers are null references, but we still get a nonzero
                   // size for the decoded data.
                   boolean doRender = ( info.size != 0 );
@@ -414,15 +403,14 @@ public class VideoResizer {
                   decoder.releaseOutputBuffer( decoderStatus, doRender );
                   if ( doRender ) {
                      // This waits for the image and renders it after it arrives.
-                     if ( VERBOSE )
-                        Log.d( TAG, "awaiting frame" );
+                     Logger.v( TAG, "awaiting frame" );
                      mOutputSurface.awaitNewImage();
                      mOutputSurface.drawImage();
                      // Send it to the encoder.
                      
                      long nSecs = info.presentationTimeUs * 1000;
 
-                     Log.d( "this", "Setting presentation time " + nSecs / ( 1000 * 1000 ) );
+                     Logger.d(TAG, "Setting presentation time " + nSecs / ( 1000 * 1000 ) );
                      nSecs = Math.max( 0, nSecs );
                      
                      mEncoderPresentationTimeUs += ( nSecs - mLastSampleTime );
@@ -430,8 +418,7 @@ public class VideoResizer {
                      mLastSampleTime = nSecs;
                      
                      mInputSurface.setPresentationTime( mEncoderPresentationTimeUs );
-                     if ( VERBOSE )
-                        Log.d( TAG, "swapBuffers" );
+                     Logger.v( TAG, "swapBuffers" );
                      mInputSurface.swapBuffers();
                   }
                   if ( ( info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM ) != 0 ) {

@@ -8,11 +8,11 @@ import android.hardware.Camera;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 
 import com.aimbrain.aimbrain.R;
+import com.aimbrain.sdk.util.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
  * The result can obtained in  <code>onActivityResult</code> method from  <code>PhotoFaceCaptureActivity.images</code> static field.
  */
 public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
+    private static final String TAG = PhotoFaceCaptureActivity.class.getSimpleName();
+
     /**
      * specify number of images taken. Default is 3
      */
@@ -82,8 +84,7 @@ public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
                     photoTakenAmount = 0;
                     takePicture(pictureTasks);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    Log.d("Take photos", e.getMessage());
+                    Logger.e(TAG, "take photos", e);
                 }
             }
 
@@ -102,7 +103,7 @@ public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
                                     photoTakenAmount++;
                                     takePicture(pictureTasks);
                                 } catch (InterruptedException e) {
-                                    e.printStackTrace();
+                                    Logger.w(TAG, "pic delay", e);
                                 }
                                 FutureTask getPicture = new FutureTask<Bitmap>(new Callable<Bitmap>() {
                                     @Override
@@ -141,13 +142,10 @@ public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
 
                 adjustPhotosExecutor.shutdown();
                 for (FutureTask<Bitmap> pictureTask : pictureTasks) {
-
                     try {
                         photos.add(pictureTask.get());
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Logger.w(TAG, "collect photos", e);
                     }
 
                 }
@@ -165,7 +163,7 @@ public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
             try {
                 adjustPhotosExecutor.awaitTermination(photoInterval * photosAmount, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Logger.w(TAG, "await termiantion", e);
             }
             if (!adjustPhotosExecutor.isTerminated()) {
                 adjustPhotosExecutor.shutdownNow();

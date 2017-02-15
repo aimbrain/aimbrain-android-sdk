@@ -8,12 +8,14 @@ import android.util.Base64;
 import com.aimbrain.sdk.Manager;
 import com.aimbrain.sdk.models.StringListDataModel;
 import com.aimbrain.sdk.server.FaceActions;
+import com.aimbrain.sdk.util.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PictureManager {
+    public static final String TAG = PictureManager.class.getSimpleName();
 
     public final static int MAX_PHOTO_HEIGHT = 300;
     public final static int COMPRESSION_RATIO = 100;
@@ -74,7 +76,7 @@ public class PictureManager {
             adjustedPhoto = PictureManager.adjustSize(adjustedPhoto, PictureManager.MAX_PHOTO_HEIGHT);
             croppedPhoto = adjustedPhoto;
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.w(TAG, "crop", e);
         }
         return croppedPhoto;
     }

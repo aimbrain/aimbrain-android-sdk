@@ -13,7 +13,6 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -38,6 +37,7 @@ import com.aimbrain.aimbrain.R;
 import com.aimbrain.sdk.array.Arrays;
 import com.aimbrain.sdk.faceCapture.helpers.LayoutUtil;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
+import com.aimbrain.sdk.util.Logger;
 
 import java.util.List;
 
@@ -48,6 +48,7 @@ import java.util.List;
  */
 
 public abstract class FaceCaptureActivity extends Activity {
+    private static final String TAG = FaceCaptureActivity.class.getSimpleName();
 
     /**
      * specify text in upper hint view on camera overlay
@@ -73,7 +74,6 @@ public abstract class FaceCaptureActivity extends Activity {
     protected static final int PERMISSIONS_REQUEST_CREATE = 2211;
     protected static final int PERMISSIONS_REQUEST_RESUME = 2212;
     protected static final int PERMISSIONS_REQUEST_CAMERA_BUTTON = 2213;
-
 
     protected SurfaceView preview;
     protected SurfaceHolder previewHolder;
@@ -287,7 +287,7 @@ public abstract class FaceCaptureActivity extends Activity {
                 }
             }
         }
-        Log.i("PREVIEW SIZE", "Chosen preview size: " + result.width + "x" + result.height);
+        Logger.i(TAG, "Chosen preview size: " + result.width + "x" + result.height);
         return (result);
     }
 
@@ -382,8 +382,7 @@ public abstract class FaceCaptureActivity extends Activity {
                     }
                 }
             } catch (Throwable t) {
-                Log.e("surfaceCallback",
-                        "Exception in setPreviewDisplay()", t);
+                Logger.e(TAG, "Exception in setPreviewDisplay()", t);
                 Toast.makeText(FaceCaptureActivity.this, t.getMessage(), Toast.LENGTH_LONG)
                         .show();
             }
@@ -412,7 +411,7 @@ public abstract class FaceCaptureActivity extends Activity {
                 bestFoundRatio = currentRatio;
             }
         }
-        Log.i("PICTURE SIZE", "Chosen picture size: "+ pictureSize.width +"x"+pictureSize.height);
+        Logger.i(TAG, "Chosen picture size: "+ pictureSize.width +"x"+pictureSize.height);
         return pictureSize;
     }
 
@@ -463,7 +462,7 @@ public abstract class FaceCaptureActivity extends Activity {
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
-        Log.d("FaceCaptureActivity", "result " + result);
+        Logger.d(TAG, "result " + result);
         return result;
     }
 

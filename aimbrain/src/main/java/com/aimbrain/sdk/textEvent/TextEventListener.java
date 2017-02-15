@@ -2,14 +2,15 @@ package com.aimbrain.sdk.textEvent;
 
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 
 import com.aimbrain.sdk.collectors.SensorEventCollector;
 import com.aimbrain.sdk.collectors.TextEventCollector;
+import com.aimbrain.sdk.util.Logger;
 
 
 public class TextEventListener implements TextWatcher {
+    private static final String TAG = TextEventListener.class.getSimpleName();
 
     private View view;
 
@@ -18,7 +19,6 @@ public class TextEventListener implements TextWatcher {
     }
 
     @Override
-
     public void beforeTextChanged(CharSequence s, int start, int count, int after) {
     }
 
@@ -30,6 +30,6 @@ public class TextEventListener implements TextWatcher {
     public void afterTextChanged(Editable s) {
         SensorEventCollector.getInstance().startCollectingData(500);
         TextEventCollector.getInstance().textChanged(s.toString(), System.currentTimeMillis(), view);
-        Log.i("TEXT: ", s.toString());
+        Logger.v(TAG, s.toString());
     }
 }

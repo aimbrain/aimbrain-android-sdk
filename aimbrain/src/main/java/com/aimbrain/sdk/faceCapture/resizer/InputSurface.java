@@ -21,8 +21,9 @@ import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
-import android.util.Log;
 import android.view.Surface;
+
+import com.aimbrain.sdk.util.Logger;
 
 /**
  * Holds state associated with a Surface used for MediaCodec encoder input.
@@ -143,7 +144,7 @@ class InputSurface {
       boolean failed = false;
       int error;
       while ( ( error = EGL14.eglGetError() ) != EGL14.EGL_SUCCESS ) {
-         Log.e( TAG, msg + ": EGL error: 0x" + Integer.toHexString( error ) );
+         Logger.e(TAG, msg + ": EGL error: 0x" + Integer.toHexString( error ) );
          failed = true;
       }
       if ( failed ) {

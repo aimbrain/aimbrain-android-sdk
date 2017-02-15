@@ -13,7 +13,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -23,6 +22,7 @@ import android.widget.TextView;
 
 import com.aimbrain.aimbrain.R;
 import com.aimbrain.sdk.array.Arrays;
+import com.aimbrain.sdk.util.Logger;
 import com.aimbrain.sdk.voiceCapture.helpers.WaveFileHelper;
 
 import java.io.ByteArrayOutputStream;
@@ -35,8 +35,7 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class VoiceCaptureActivity extends Activity {
-
-    public static final String TAG = VoiceCaptureActivity.class.getSimpleName();
+    private static final String TAG = VoiceCaptureActivity.class.getSimpleName();
 
     /**
      * specify text in upper hint view
@@ -64,7 +63,7 @@ public class VoiceCaptureActivity extends Activity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate");
+        Logger.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setScreenParameters();
         setContentView(R.layout.activity_voice_capture);
@@ -80,7 +79,7 @@ public class VoiceCaptureActivity extends Activity {
         if (recordButton!=null) {
             recordButton.stop();
         }
-        Log.d("VoiceCaptureActivity", "on stop stop recording");
+        Logger.d(TAG, "on stop stop recording");
         stopRecording();
         super.onPause();
     }
@@ -146,7 +145,7 @@ public class VoiceCaptureActivity extends Activity {
                     }
                     animateTextView(RECORDING_TIME-1, 0, lowerTextView);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Logger.e(TAG, "save recording", e);
                 }
             }
         });
@@ -154,7 +153,7 @@ public class VoiceCaptureActivity extends Activity {
         closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("VoiceCaptureActivity", "close button stop recording");
+                Logger.d(TAG, "close button stop recording");
                 stopRecording();
                 setResult(RESULT_CANCELED);
                 finish();
@@ -188,7 +187,7 @@ public class VoiceCaptureActivity extends Activity {
     }
 
     private void startRecording() throws IOException {
-        Log.d(TAG, "start recording");
+        Logger.d(TAG, "start recording");
         RecordAudio recordTask = new RecordAudio();
         recordTask.execute();
         Timer timer = new Timer();
@@ -259,7 +258,7 @@ public class VoiceCaptureActivity extends Activity {
 
         @Override
         protected byte[] doInBackground(Void... params) {
-            Log.d("MainActivity", "RecordAudio ");
+            Logger.d(TAG, "RecordAudio ");
             isRecording = true;
             ByteArrayOutputStream outByte = null;
             try {
@@ -276,21 +275,21 @@ public class VoiceCaptureActivity extends Activity {
                     mRecorder.read(buffer, 0, bufferSize);
                     outByte.write(buffer);
                 }
-                Log.d(TAG, "do in bg stop recording");
+                Logger.d(TAG, "do in bg stop recording");
                 mRecorder.stop();
                 mRecorder.release();
                 mRecorder = null;
                 return WaveFileHelper.getAudioBytesWithWaveHeaders(outByte.toByteArray());
 
             } catch (IOException e) {
-                Log.e("AudioRecord", "Recording Failed", e);
+                Logger.e(TAG, "Recording Failed", e);
                 error = "Recording failed " + e.getMessage();
             }finally {
                 if (outByte != null) {
                     try {
                         outByte.close();
                     } catch (IOException e) {
-                        Log.e("AudioRecord", "Failed to close bytearray", e);
+                        Logger.e(TAG, "Failed to close bytearray", e);
                     }
                 }
             }
@@ -298,7 +297,7 @@ public class VoiceCaptureActivity extends Activity {
         }
 
         protected void onPostExecute(byte[] result) {
-            Log.d("MainActivity", "Post execute");
+            Logger.d(TAG, "Post execute");
             if (error != null) {
                 displayErrorAndFinish(error);
             } else {

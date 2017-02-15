@@ -2,7 +2,8 @@ package com.aimbrain.sdk.voiceCapture.helpers;
 
 import android.media.AudioFormat;
 import android.media.MediaRecorder;
-import android.util.Log;
+
+import com.aimbrain.sdk.util.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +20,7 @@ public class WaveFileHelper {
     public static final int RECORDER_BPP = 16;
     public static final int CHANNELS_MONO = 1;
     public static final int CHANNELS_STEREO = 2;
+    public static final String TAG = WaveFileHelper.class.getSimpleName();
 
     public static byte[] getAudioBytesWithWaveHeaders(byte[] source) throws IOException {
 
@@ -37,8 +39,8 @@ public class WaveFileHelper {
         int channels = CHANNELS_MONO; //mono
         long byteRate = RECORDER_BPP * AUDIO_FREQUENCY * channels/8;
 
-        Log.d("MainActivity", "File size: " + totalDataLen);
-        Log.d("MainActivity", "totalAudioLenght" + totalAudioLen);
+        Logger.v(TAG, "Written wav file size: " + totalDataLen);
+        Logger.v(TAG, "Written wav total audio len: " + totalAudioLen);
 
         byte[] header = new byte[44];
 

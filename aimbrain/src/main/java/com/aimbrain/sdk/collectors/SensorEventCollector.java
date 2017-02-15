@@ -1,14 +1,15 @@
 package com.aimbrain.sdk.collectors;
 
 import android.hardware.SensorEvent;
-import android.util.Log;
 
 import com.aimbrain.sdk.models.AccelerometerEventModel;
 import com.aimbrain.sdk.sensorEvent.AccelerometerEventListener;
+import com.aimbrain.sdk.util.Logger;
 
 
 public class SensorEventCollector extends EventCollector {
 
+    private static final String TAG = SensorEventCollector.class.getSimpleName();
     private static SensorEventCollector instance;
 
     private AccelerometerEventListener accelerometerEventListener;
@@ -24,14 +25,14 @@ public class SensorEventCollector extends EventCollector {
         accelerometerEventListener = new AccelerometerEventListener(10);
     }
 
-    public void accelerometerDataChanged(SensorEvent sensorEvent, long timestamp)
-    {
-        Log.i("ACCELEROMETER", "data changed");
+    public void accelerometerDataChanged(SensorEvent sensorEvent, long timestamp) {
+        Logger.v(TAG, "data changed (" + sensorEvent.values[0] + ", " + sensorEvent.values[1] + ", " + sensorEvent.values[2] + ")");
         AccelerometerEventModel accelerometerModel = new AccelerometerEventModel(sensorEvent, timestamp);
         addCollectedData(accelerometerModel);
     }
 
     public void startCollectingData(int samplingPeriodMs) {
+        Logger.v(TAG, "start collecting data");
         accelerometerEventListener.startForPeriod(samplingPeriodMs);
     }
 }

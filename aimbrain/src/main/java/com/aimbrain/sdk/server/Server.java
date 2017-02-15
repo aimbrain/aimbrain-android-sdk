@@ -8,7 +8,6 @@ import android.net.NetworkInfo;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.util.Base64;
-import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 
@@ -18,6 +17,7 @@ import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
 import com.aimbrain.sdk.models.VoiceTokenModel;
 import com.aimbrain.sdk.models.VoiceTokenType;
+import com.aimbrain.sdk.util.Logger;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Network;
 import com.android.volley.Request;
@@ -56,6 +56,7 @@ public class Server {
     private static final int SOCKET_TIMEOUT = 10000; //[ms]
     private static final int MAX_RETRIES = 1;
     public static final String DEFAULT_API_BASE_URL = "https://api.aimbrain.com:443/v1/";
+    public static final String TAG = Server.class.getSimpleName();
 
     private boolean apiCallsAllowed;
     private String apiKey;
@@ -102,7 +103,7 @@ public class Server {
             this.voiceActionsURLs.put(VoiceActions.VOICE_ENROLL, new URL(baseURL, "voice/enroll"));
 
         } catch (MalformedURLException e) {
-            e.printStackTrace();
+            Logger.e(TAG, "config url", e);
         }
     }
 
@@ -130,12 +131,8 @@ public class Server {
             sha256_HMAC.init(secret_key);
             byte [] data = sha256_HMAC.doFinal(messageBytes);
             return Base64.encodeToString(data, Base64.DEFAULT);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+        } catch (NoSuchAlgorithmException | InvalidKeyException | UnsupportedEncodingException e) {
+            Logger.e(TAG, "signature", e);
         }
         throw new InvalidSignatureException("Unable to calculate signature.");
     }
@@ -177,7 +174,7 @@ public class Server {
                                     sessionCallback.onSessionCreated(Server.this.session);
                                 }
                             } catch (JSONException e) {
-                                e.printStackTrace();
+                                Logger.e(TAG, "json", e);
                             }
                         }
                     }, errorListener);
@@ -261,7 +258,7 @@ public class Server {
                                 scoreModel = new ScoreModel(score, status, sessionIdCopy, metadata);
                                 scoreCallback.success(scoreModel);
                             } catch (JSONException e) {
-                                e.printStackTrace();
+                                Logger.e(TAG, "json", e);
                             }
                         }
                     }
@@ -329,7 +326,7 @@ public class Server {
                                     scoreCallback.success(scoreModel);
                                 }
                             } catch (JSONException e) {
-                                e.printStackTrace();
+                                Logger.e(TAG, "json", e);
                             }
                         }
                     }, new AMBNResponseErrorListener());
@@ -382,23 +379,21 @@ public class Server {
                         (getHeadersMap(jsonObject, this.faceActionsURLs.get(faceAction)), Request.Method.POST, this.faceActionsURLs.get(faceAction).toString(), jsonObject, new Response.Listener<JSONObject>() {
                             @Override
                             public void onResponse(JSONObject response) {
-                                Log.d("Response", "response: " + response.toString());
                                 callback.fireSuccessAction(response);
                             }
                         }, new AMBNResponseErrorListener() {
                             @Override
                             public void onErrorResponse(VolleyError error) {
-                                Log.d("JSON error", error.networkResponse.data.toString());
                                 super.onErrorResponse(error);
                                 callback.failure(error);
                             }
                         });
             } catch (InvalidSignatureException e) {
-                e.printStackTrace();
+                Logger.e(TAG, "signature", e);
             }
             sendRequest(jsonRequest);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Logger.e(TAG, "json", e);
         }
     }
 
@@ -443,7 +438,6 @@ public class Server {
                         (getHeadersMap(jsonObject, this.faceCompare), Request.Method.POST, this.faceCompare.toString(), jsonObject, new Response.Listener<JSONObject>() {
                             @Override
                             public void onResponse(JSONObject response) {
-                                Log.d("Response", "response: " + response.toString());
                                 try {
                                     if (callback != null) {
                                         double score = response.getDouble("score");
@@ -457,24 +451,23 @@ public class Server {
                                         callback.success(new FaceCompareModel(score, liveliness1, liveliness2, metadata));
                                     }
                                 } catch (JSONException e) {
-                                    e.printStackTrace();
+                                    Logger.e(TAG, "json", e);
                                 }
 
                             }
                         }, new AMBNResponseErrorListener() {
                             @Override
                             public void onErrorResponse(VolleyError error) {
-                                Log.d("JSON error", error.networkResponse.data.toString());
                                 super.onErrorResponse(error);
                                 callback.failure(error);
                             }
                         });
             } catch (InvalidSignatureException e) {
-                e.printStackTrace();
+                Logger.e(TAG, "signature", e);
             }
             sendRequest(jsonRequest);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Logger.e(TAG, "json", e);
         }
     }
 
@@ -536,7 +529,7 @@ public class Server {
                                     tokenCallback.success(tokenModel);
                                 }
                             } catch (JSONException e) {
-                                e.printStackTrace();
+                                Logger.e(TAG, "json", e);
                             }
                         }
                     }, new AMBNResponseErrorListener());
@@ -592,23 +585,21 @@ public class Server {
                                 jsonObject, new Response.Listener<JSONObject>() {
                             @Override
                             public void onResponse(JSONObject response) {
-                                Log.d("Response", "response: " + response.toString());
                                 callback.fireSuccessAction(response);
                             }
                         }, new AMBNResponseErrorListener() {
                             @Override
                             public void onErrorResponse(VolleyError error) {
-                                Log.d("JSON error", error.networkResponse.data.toString());
                                 super.onErrorResponse(error);
                                 callback.failure(error);
                             }
                         });
             } catch (InvalidSignatureException e) {
-                e.printStackTrace();
+                Logger.e(TAG, "signature", e);
             }
             sendRequest(jsonRequest);
         } catch (JSONException e) {
-            e.printStackTrace();
+            Logger.e(TAG, "json", e);
         }
     }
 

@@ -3,6 +3,8 @@ package com.aimbrain.sdk.privacy;
 import android.view.View;
 import android.view.ViewParent;
 
+import com.aimbrain.sdk.util.Logger;
+
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.security.InvalidParameterException;
@@ -16,6 +18,7 @@ import java.util.Set;
 public class SensitiveViewGuard {
 
     private static final int SALT_BYTES = 128;
+    public static final String TAG = SensitiveViewGuard.class.getSimpleName();
 
     private Set<WeakReference<View>> sensitiveViews;
     private byte[] salt;
@@ -82,7 +85,7 @@ public class SensitiveViewGuard {
             byte[] hash = digest.digest(input.getBytes("UTF-8"));
             return bytesToString(hash);
         } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
-            e.printStackTrace();
+            Logger.w(TAG, "hash digest", e);
         }
         return null;
     }

@@ -9,7 +9,6 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Rect;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -22,10 +21,13 @@ import com.aimbrain.sdk.faceCapture.fragments.AbstractCameraPermissionFragment;
 import com.aimbrain.sdk.faceCapture.fragments.LayoutOverlayObserver;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy.CameraChoice;
+import com.aimbrain.sdk.util.Logger;
 
 
 public class VideoFaceCaptureActivity extends Activity
         implements AbstractCameraPermissionFragment.ActivityCallback, LayoutOverlayObserver {
+
+    private static final String TAG = VideoFaceCaptureActivity.class.getSimpleName();
 
     public static final String EXTRA_DURATION_MILLIS = "durationMillis";
     /**
@@ -120,7 +122,7 @@ public class VideoFaceCaptureActivity extends Activity
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        Log.d("VideoActivity", "onRequestPermissionsResult in activity");
+        Logger.i(TAG, "onRequestPermissionsResult in activity");
         switch (requestCode) {
             case AbstractCameraPermissionFragment.PERMISSIONS_REQUEST_CREATE:
             case AbstractCameraPermissionFragment.PERMISSIONS_REQUEST_RESUME: {

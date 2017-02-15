@@ -18,9 +18,11 @@ import android.view.accessibility.AccessibilityEvent;
 import android.widget.EditText;
 
 import com.aimbrain.sdk.collectors.TextEventCollector;
+import com.aimbrain.sdk.util.Logger;
 
 
 public class AMBNWindowCallback implements Window.Callback {
+    private static final String TAG = AMBNWindowCallback.class.getSimpleName();
 
     private Window.Callback localCallback;
     private Window window;
@@ -29,11 +31,11 @@ public class AMBNWindowCallback implements Window.Callback {
         this.localCallback = window.getCallback();
         this.window = window;
         this.window.setCallback(this);
-
         this.window.getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(new ViewTreeObserver.OnGlobalFocusChangeListener() {
             @Override
             public void onGlobalFocusChanged(View oldFocus, View newFocus) {
-                if(newFocus instanceof EditText){
+                if (newFocus instanceof EditText){
+                    Logger.v(TAG, "attach text listener " + newFocus);
                     TextEventCollector.getInstance().attachTextChangedListener((EditText)newFocus);
                 }
             }
@@ -162,13 +164,11 @@ public class AMBNWindowCallback implements Window.Callback {
     @Override
     public void onActionModeStarted(ActionMode mode) {
         localCallback.onActionModeStarted(mode);
-
     }
 
     @SuppressLint("NewApi")
     @Override
     public void onActionModeFinished(ActionMode mode) {
         localCallback.onActionModeFinished(mode);
-
     }
 }

@@ -22,6 +22,7 @@ import com.aimbrain.sdk.server.VoiceCaptureEnrollCallback;
 import com.aimbrain.sdk.server.VoiceCapturesAuthenticateCallback;
 import com.aimbrain.sdk.server.VoiceCapturesCallback;
 import com.aimbrain.sdk.server.VoiceTokenCallback;
+import com.aimbrain.sdk.util.Logger;
 import com.android.volley.Response;
 import com.aimbrain.sdk.AMBNApplication.AMBNApplication;
 import com.aimbrain.sdk.activityCallback.AMBNActivityLifecycleCallback;
@@ -53,7 +54,7 @@ import java.util.WeakHashMap;
  * Class allows defining library configuration and interaction with the server.
  */
 public class Manager {
-
+    private static final String TAG = Manager.class.getSimpleName();
     private static Manager manager;
 
     private WeakHashMap<Window, AMBNWindowCallback> windowsMap;
@@ -85,10 +86,12 @@ public class Manager {
      * @param window window object that is currently displayed on top.
      */
     public void startCollectingData(Window window) {
+        Logger.v(TAG, "Start collecting data in " + window);
         activityLifecycleCallback = new AMBNActivityLifecycleCallback();
         AMBNApplication.getInstance().registerActivityLifecycleCallbacks(activityLifecycleCallback);
-        if (window != null)
+        if (window != null) {
             windowChanged(window);
+        }
     }
 
     /**
@@ -98,8 +101,10 @@ public class Manager {
      * @param window window that is currently displayed as top window
      */
     public void windowChanged(Window window) {
-        if (!this.windowsMap.containsKey(window))
+        Logger.d(TAG, "Window changed " + window);
+        if (!this.windowsMap.containsKey(window)) {
             this.windowsMap.put(window, new AMBNWindowCallback(window));
+        }
     }
 
     /**
@@ -120,15 +125,18 @@ public class Manager {
      * @param scoreCallback callback for receiving responses from server
      */
     public void scheduleDataSubmission(long delay, long period, final ScoreCallback scoreCallback) {
+        Logger.v(TAG, "Schedule data submission after " + delay + ", every " + period);
         if (timer == null) {
+            Logger.v(TAG, "Creating submission timer");
             timer = new Timer();
             timerTask = new TimerTask() {
                 @Override
                 public void run() {
+                    Logger.v(TAG, "Submit scheduled data");
                     try {
                         submitCollectedData(scoreCallback);
                     } catch (InternalException | ConnectException | SessionException e) {
-                        e.printStackTrace();
+                        Logger.w(TAG, e);
                     }
                 }
             };
@@ -140,9 +148,11 @@ public class Manager {
      * Allows to stop collecting data.
      */
     public void stopCollectingData() {
+        Logger.v(TAG, "Stop collecting data");
         AMBNApplication.getInstance().unregisterActivityLifecycleCallbacks(activityLifecycleCallback);
         activityLifecycleCallback = null;
         if (timer != null) {
+            Logger.v(TAG, "Stop submission timer");
             timer.cancel();
             timer = null;
         }
@@ -152,6 +162,7 @@ public class Manager {
             Window window = item.getKey();
             window.setCallback(item.getValue().getLocalCallback());
             windowIterator.remove();
+            Logger.v(TAG, "Removed callback from " + window);
         }
 
         TextEventCollector.getInstance().stop();
@@ -163,8 +174,10 @@ public class Manager {
      * @param privacyGuard privacy guard to be added
      */
     public void addPrivacyGuard(PrivacyGuard privacyGuard) {
-        if (!privacyGuards.contains(privacyGuard))
+        if (!privacyGuards.contains(privacyGuard)) {
+            Logger.v(TAG, "Add privacy guard");
             privacyGuards.add(privacyGuard);
+        }
     }
 
     /**
@@ -175,8 +188,9 @@ public class Manager {
      */
     public boolean isViewIgnored(View view) {
         for (PrivacyGuard privacyGuard : privacyGuards) {
-            if (privacyGuard.isViewIgnored(view))
+            if (privacyGuard.isViewIgnored(view)) {
                 return true;
+            }
         }
         return false;
     }
@@ -187,6 +201,7 @@ public class Manager {
      * @param sessionId existing session id
      */
     public void configure(String sessionId) {
+        Logger.v(TAG, "Configure with session id " + sessionId);
         SessionModel model = new SessionModel(sessionId, SessionModel.NOT_ENROLLED,
                 SessionModel.NOT_ENROLLED, SessionModel.NOT_ENROLLED, null);
         this.server = new Server(model);
@@ -199,6 +214,7 @@ public class Manager {
      * @param secret secret defined for given application id
      */
     public void configure(String apiKey, String secret) {
+        Logger.v(TAG, "Configure with api key " + apiKey);
         this.server = new Server(apiKey, secret);
     }
 
@@ -210,6 +226,7 @@ public class Manager {
      * @param apiBaseUrl base api server url.
      */
     public void configure(String apiKey, String secret, String apiBaseUrl) {
+        Logger.v(TAG, "Configure with api key " + apiKey + ", base url " + apiBaseUrl);
         this.server = new Server(apiKey, secret, apiBaseUrl);
     }
 
@@ -267,6 +284,7 @@ public class Manager {
         if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
         }
+        Logger.v(TAG, "Create session with user id " + userId);
         this.server.createSession(userId, metadata, context, sessionCallback, errorListener);
     }
 
@@ -282,7 +300,7 @@ public class Manager {
         if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
         }
-
+        Logger.v(TAG, "Serialized create session with user id " + userId);
         return this.server.getSerializedCreateSession(userId, metadata, context);
     }
 
@@ -313,7 +331,7 @@ public class Manager {
         if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
         }
-
+        Logger.v(TAG, "Submit collected data");
         if (TextEventCollector.getInstance().hasData() || SensorEventCollector.getInstance().hasData() || MotionEventCollector.getInstance().hasData()) {
             List<EventModel> textData = TextEventCollector.getInstance().getCollectedData();
             List<EventModel> sensorData = SensorEventCollector.getInstance().getCollectedData();
@@ -333,7 +351,7 @@ public class Manager {
         if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
         }
-
+        Logger.v(TAG, "Serialized submit collected data");
         List<EventModel> textData = TextEventCollector.getInstance().getCollectedData();
         List<EventModel> sensorData = SensorEventCollector.getInstance().getCollectedData();
         List<EventModel> motionData = MotionEventCollector.getInstance().getCollectedData();
@@ -365,6 +383,7 @@ public class Manager {
      * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void getCurrentScore(byte[] metadata, ScoreCallback scoreCallback) throws InternalException, SessionException, ConnectException {
+        Logger.v(TAG, "Get current score");
         server.getCurrentScore(metadata, scoreCallback);
     }
 
@@ -378,7 +397,7 @@ public class Manager {
         if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
         }
-
+        Logger.v(TAG, "Serialized get current score");
         return server.getSerializedGetCurrentScore(metadata);
     }
 
@@ -408,6 +427,7 @@ public class Manager {
      * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void sendProvidedFaceCapturesToEnroll(List<Bitmap> photos, byte[] metadata, FaceCapturesEnrollCallback faceCapturesEnrollCallback) throws InternalException, ConnectException, SessionException {
+        Logger.v(TAG, "Send provided face captures to enroll");
         sendFaceCaptures(encodePhotos(photos), metadata, FaceActions.FACE_ENROLL, faceCapturesEnrollCallback);
     }
 
@@ -569,6 +589,7 @@ public class Manager {
      * @throws IllegalStateException thrown when current configuration is for request serialization only.
      */
     public void compareFacesPhotos(List<Bitmap> firstFacePhotos, List<Bitmap> secondFacePhotos, byte[] metadata, FaceCompareCallback callback) throws InternalException, ConnectException, SessionException {
+        Logger.v(TAG, "Compare faces");
         server.compareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), metadata, callback);
     }
 
@@ -581,6 +602,7 @@ public class Manager {
      * @throws InternalException thrown when preparing request fails
      */
     public SerializedRequest getSerializedCompareFacesPhotos(List<Bitmap> firstFacePhotos, List<Bitmap> secondFacePhotos, byte[] metadata) throws InternalException {
+        Logger.v(TAG, "Serialized compare faces");
         return server.getSerializedCompareFaces(encodePhotos(firstFacePhotos), encodePhotos(secondFacePhotos), metadata);
     }
 
@@ -694,6 +716,7 @@ public class Manager {
      */
     public void getVoiceToken(VoiceTokenType tokenType, byte[] metadata, VoiceTokenCallback tokenCallback)
             throws InternalException, SessionException, ConnectException {
+        Logger.v(TAG, "Voice token of type " + tokenType);
         server.getVoiceToken(tokenType, metadata, tokenCallback);
     }
 
@@ -707,7 +730,7 @@ public class Manager {
         if (this.server == null) {
             throw new IllegalStateException("Server is not configured properly.");
         }
-
+        Logger.v(TAG, "Serialized voice token of type " + tokenType);
         return server.getSerializedVoiceToken(tokenType, metadata);
     }
 
@@ -731,10 +754,12 @@ public class Manager {
     }
 
     private void sendFaceCaptures(StringListDataModel captures, byte[] metadata, FaceActions faceAction, FaceCapturesCallback faceCapturesCallback) throws InternalException, ConnectException, SessionException {
+        Logger.v(TAG, "Send face captures for " + faceAction);
         server.sendProvidedFaceCaptures(captures, metadata, faceCapturesCallback, faceAction);
     }
 
     private SerializedRequest getSerializedSendFaceCaptures(StringListDataModel captures, byte[] metadata, FaceActions faceAction) throws InternalException {
+        Logger.v(TAG, "Serialized send face captures for " + faceAction);
         return server.getSerializedSendProvidedFaceCaptures(captures, metadata, faceAction);
     }
 
@@ -745,11 +770,13 @@ public class Manager {
     private void sendVoiceCaptures(StringListDataModel captures, byte[] metadata,
                                    VoiceActions voiceAction, VoiceCapturesCallback voiceCapturesCallback)
             throws InternalException, ConnectException, SessionException {
+        Logger.v(TAG, "Serialized send voice captures for " + voiceAction);
         server.sendProvidedVoiceCaptures(captures, metadata, voiceCapturesCallback, voiceAction);
     }
 
     private SerializedRequest getSerializedSendVoiceCaptures(StringListDataModel captures, byte[] metadata,
                                                              VoiceActions voiceAction) throws InternalException {
+        Logger.v(TAG, "Serialized send voice captures for " + voiceAction);
         return server.getSerializedSendProvidedVoiceCaptures(captures, metadata, voiceAction);
     }
 }

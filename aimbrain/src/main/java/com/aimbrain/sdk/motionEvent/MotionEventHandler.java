@@ -10,9 +10,11 @@ import android.view.Window;
 import com.aimbrain.sdk.Manager;
 import com.aimbrain.sdk.collectors.MotionEventCollector;
 import com.aimbrain.sdk.collectors.SensorEventCollector;
+import com.aimbrain.sdk.util.Logger;
 
 
 public class MotionEventHandler {
+    private static final String TAG = MotionEventHandler.class.getSimpleName();
 
     private static MotionEventHandler motionEventHandler;
 
@@ -27,9 +29,9 @@ public class MotionEventHandler {
     }
 
     public void touchCaptured(MotionEvent motionEvent, long timestamp, Window window) {
-        Log.i("Handler", "Touch captured:" + motionEvent.getAction());
 
         View view = findViewBelowMotionEvent(motionEvent, window);
+        Logger.v(TAG, "Touch captured: " + motionEvent.getAction() + ", view " + view);
 
         if(!Manager.getInstance().isViewIgnored(view)) {
             SensorEventCollector.getInstance().startCollectingData(500);

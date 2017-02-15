@@ -7,7 +7,8 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.os.Build;
-import android.util.Log;
+
+import com.aimbrain.sdk.util.Logger;
 
 import java.util.Arrays;
 
@@ -35,11 +36,11 @@ public class CameraChoiceStrategy {
             String cameraId = getPreferredCameraId(manager);
             CameraCharacteristics chars = manager.getCameraCharacteristics(cameraId);
             Integer level = chars.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-            Log.d(TAG, "supported camera level " + level);
+            Logger.d(TAG, "supported camera level " + level);
             return level != null && level != CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY;
 
         } catch (CameraAccessException e) {
-            Log.d(TAG, "Error picking camera api", e);
+            Logger.d(TAG, "Error picking camera api", e);
             return false;
         }
     }
@@ -50,7 +51,7 @@ public class CameraChoiceStrategy {
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public static String getPreferredCameraId(CameraManager manager) throws CameraAccessException {
         String[] availableIds = manager.getCameraIdList();
-        Log.d(TAG, "Available cameras: " + Arrays.toString(availableIds));
+        Logger.d(TAG, "Available cameras: " + Arrays.toString(availableIds));
         for (String id : availableIds) {
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(id);
             Integer lensFlag = characteristics.get(CameraCharacteristics.LENS_FACING);

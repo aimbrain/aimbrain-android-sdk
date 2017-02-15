@@ -8,9 +8,9 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
-import android.util.Log;
 
 import com.aimbrain.sdk.array.Arrays;
+import com.aimbrain.sdk.util.Logger;
 
 
 public abstract class AbstractCameraPermissionFragment extends Fragment {
@@ -37,14 +37,14 @@ public abstract class AbstractCameraPermissionFragment extends Fragment {
         if (!(context instanceof ActivityCallback)) {
             throw new IllegalArgumentException("Activity must implement ActivityCallBack");
         }
-        Log.d(TAG, "onAttach");
+        Logger.d(TAG, "onAttach");
         mListener = (ActivityCallback) context;
     }
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        Log.d(TAG, "onAttach deprecated");
+        Logger.d(TAG, "onAttach deprecated");
         if (!(activity instanceof ActivityCallback)) {
             throw new IllegalArgumentException("Activity must implement ActivityCallBack");
         }

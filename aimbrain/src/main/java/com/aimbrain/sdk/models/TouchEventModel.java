@@ -1,10 +1,10 @@
 package com.aimbrain.sdk.models;
 
 import android.graphics.PointF;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.aimbrain.sdk.util.Logger;
 import com.aimbrain.sdk.viewManager.ViewIdMapper;
 
 import org.json.JSONArray;
@@ -15,7 +15,7 @@ import java.util.LinkedList;
 
 
 public class TouchEventModel extends EventModel {
-
+    private static final String TAG = TouchEventModel.class.getSimpleName();
     private LinkedList<String> viewPath;
     private int groupId;
     private int touchId;
@@ -27,7 +27,6 @@ public class TouchEventModel extends EventModel {
     private long timestamp;
 
     public TouchEventModel(int touchId, int groupId, MotionEvent event, long timestamp, int pointerIndex, View view, boolean sensitive) {
-
         this.touchId = touchId;
         this.groupId = groupId;
         if(!sensitive)
@@ -42,7 +41,7 @@ public class TouchEventModel extends EventModel {
         this.radius = event.getTouchMajor(pointerIndex);
         this.phase = convertToIosTouchPhase(event.getActionMasked());
         this.timestamp = timestamp;
-        Log.i("TouchEventModel", "touchId:" + touchId + " groupId:" + groupId + " absolutePoint:" + absolutePoint + " relativePoint:" + relativePoint + " force:"+force + " radius:" + radius + " phase:" + phase + " timestamp:" + timestamp );
+        Logger.v(TAG, "touchId:" + touchId + " groupId:" + groupId + " absolutePoint:" + absolutePoint + " relativePoint:" + relativePoint + " force:"+force + " radius:" + radius + " phase:" + phase + " timestamp:" + timestamp );
     }
 
     public JSONObject toJSON() throws JSONException {
