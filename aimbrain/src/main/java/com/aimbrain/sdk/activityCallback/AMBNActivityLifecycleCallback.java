@@ -25,6 +25,7 @@ public class AMBNActivityLifecycleCallback implements Application.ActivityLifecy
     @Override
     public void onActivityResumed(Activity activity) {
         Logger.v(TAG, "onActivityResumed " + activity);
+        Manager.getInstance().windowChanged(activity.getWindow());
     }
 
     @Override

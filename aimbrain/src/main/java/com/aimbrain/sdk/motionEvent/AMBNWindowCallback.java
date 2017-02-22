@@ -29,6 +29,7 @@ public class AMBNWindowCallback implements Window.Callback {
 
     public AMBNWindowCallback(Window window) {
         this.localCallback = window.getCallback();
+        Logger.v(TAG, "replaced callback " + this.localCallback);
         this.window = window;
         this.window.setCallback(this);
         this.window.getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(new ViewTreeObserver.OnGlobalFocusChangeListener() {

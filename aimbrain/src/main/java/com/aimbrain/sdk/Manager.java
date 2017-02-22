@@ -102,8 +102,24 @@ public class Manager {
      */
     public void windowChanged(Window window) {
         Logger.d(TAG, "Window changed " + window);
-        if (!this.windowsMap.containsKey(window)) {
-            this.windowsMap.put(window, new AMBNWindowCallback(window));
+        if (this.windowsMap.containsKey(window)) {
+            Window.Callback currentCallback = window.getCallback();
+            if (currentCallback == null) {
+                Logger.v(TAG, "No callback");
+                AMBNWindowCallback callback = new AMBNWindowCallback(window);
+                this.windowsMap.put(window, callback);
+            }
+            else if (currentCallback instanceof AMBNWindowCallback) {
+                Logger.v(TAG, "AMBN callback as expected");
+            }
+            else {
+                Logger.v(TAG, "Unexpected callback:" + currentCallback);
+                AMBNWindowCallback callback = new AMBNWindowCallback(window);
+                this.windowsMap.put(window, callback);
+            }
+        } else {
+            AMBNWindowCallback callback = new AMBNWindowCallback(window);
+            this.windowsMap.put(window, callback);
         }
     }
 
