@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.os.Build;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -20,19 +21,19 @@ import android.widget.EditText;
 import com.aimbrain.sdk.collectors.TextEventCollector;
 import com.aimbrain.sdk.util.Logger;
 
+import java.lang.ref.WeakReference;
+
 
 public class AMBNWindowCallback implements Window.Callback {
     private static final String TAG = AMBNWindowCallback.class.getSimpleName();
 
-    private Window.Callback localCallback;
-    private Window window;
+    private Window.Callback wrappedCallback;
+    private WeakReference<Window> window;
 
     public AMBNWindowCallback(Window window) {
-        this.localCallback = window.getCallback();
-        Logger.v(TAG, "replaced callback " + this.localCallback);
-        this.window = window;
-        this.window.setCallback(this);
-        this.window.getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(new ViewTreeObserver.OnGlobalFocusChangeListener() {
+        Window.Callback wrappedCallback = window.getCallback();
+        window.setCallback(this);
+        window.getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(new ViewTreeObserver.OnGlobalFocusChangeListener() {
             @Override
             public void onGlobalFocusChanged(View oldFocus, View newFocus) {
                 if (newFocus instanceof EditText){
@@ -41,135 +42,144 @@ public class AMBNWindowCallback implements Window.Callback {
                 }
             }
         });
+
+        Logger.v(TAG, "wrapped window callback " + wrappedCallback);
+        this.wrappedCallback = wrappedCallback;
+        this.window = new WeakReference<>(window);
     }
 
-    public Window.Callback getLocalCallback() {
-        return localCallback;
+    public Window.Callback getWrappedCallback() {
+        return wrappedCallback;
     }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        MotionEventHandler.getInstance().touchCaptured(event, System.currentTimeMillis(), window);
-        return localCallback.dispatchTouchEvent(event);
+        Window window = this.window.get();
+        if (window != null) {
+            MotionEventHandler.getInstance().touchCaptured(event, System.currentTimeMillis(), window);
+        } else {
+            Log.v(TAG, "dispatch with disposed window");
+        }
+        return wrappedCallback.dispatchTouchEvent(event);
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        return localCallback.dispatchKeyEvent(event);
+        return wrappedCallback.dispatchKeyEvent(event);
     }
 
     @SuppressLint("NewApi")
     @Override
     public boolean dispatchKeyShortcutEvent(KeyEvent event) {
-        return localCallback.dispatchKeyShortcutEvent(event);
+        return wrappedCallback.dispatchKeyShortcutEvent(event);
     }
 
 
     @Override
     public boolean dispatchTrackballEvent(MotionEvent event) {
-        return localCallback.dispatchTrackballEvent(event);
+        return wrappedCallback.dispatchTrackballEvent(event);
     }
 
     @SuppressLint("NewApi")
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        return localCallback.dispatchGenericMotionEvent(event);
+        return wrappedCallback.dispatchGenericMotionEvent(event);
     }
 
 
     @Override
     public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
-        return localCallback.dispatchPopulateAccessibilityEvent(event);
+        return wrappedCallback.dispatchPopulateAccessibilityEvent(event);
     }
 
     @Override
     public View onCreatePanelView(int featureId) {
-        return localCallback.onCreatePanelView(featureId);
+        return wrappedCallback.onCreatePanelView(featureId);
     }
 
     @Override
     public boolean onCreatePanelMenu(int featureId, Menu menu) {
-        return localCallback.onCreatePanelMenu(featureId, menu);
+        return wrappedCallback.onCreatePanelMenu(featureId, menu);
     }
 
     @Override
     public boolean onPreparePanel(int featureId, View view, Menu menu) {
-        return localCallback.onPreparePanel(featureId, view, menu);
+        return wrappedCallback.onPreparePanel(featureId, view, menu);
     }
 
     @Override
     public boolean onMenuOpened(int featureId, Menu menu) {
-        return localCallback.onMenuOpened(featureId, menu);
+        return wrappedCallback.onMenuOpened(featureId, menu);
     }
 
     @Override
     public boolean onMenuItemSelected(int featureId, MenuItem item) {
-        return localCallback.onMenuItemSelected(featureId, item);
+        return wrappedCallback.onMenuItemSelected(featureId, item);
     }
 
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams attrs) {
-        localCallback.onWindowAttributesChanged(attrs);
+        wrappedCallback.onWindowAttributesChanged(attrs);
     }
 
     @Override
     public void onContentChanged() {
-        localCallback.onContentChanged();
+        wrappedCallback.onContentChanged();
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-        localCallback.onWindowFocusChanged(hasFocus);
+        wrappedCallback.onWindowFocusChanged(hasFocus);
     }
 
     @Override
     public void onAttachedToWindow() {
-        localCallback.onAttachedToWindow();
+        wrappedCallback.onAttachedToWindow();
     }
 
     @Override
     public void onDetachedFromWindow() {
-        localCallback.onDetachedFromWindow();
+        wrappedCallback.onDetachedFromWindow();
     }
 
     @Override
     public void onPanelClosed(int featureId, Menu menu) {
-        localCallback.onPanelClosed(featureId, menu);
+        wrappedCallback.onPanelClosed(featureId, menu);
     }
 
     @Override
     public boolean onSearchRequested() {
-        return localCallback.onSearchRequested();
+        return wrappedCallback.onSearchRequested();
     }
 
     @TargetApi(Build.VERSION_CODES.M)
     @Override
     public boolean onSearchRequested(SearchEvent searchEvent) {
-        return localCallback.onSearchRequested(searchEvent);
+        return wrappedCallback.onSearchRequested(searchEvent);
     }
 
     @SuppressLint("NewApi")
     @Override
     public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
-        return localCallback.onWindowStartingActionMode(callback);
+        return wrappedCallback.onWindowStartingActionMode(callback);
     }
 
     @TargetApi(Build.VERSION_CODES.M)
     @Nullable
     @Override
     public ActionMode onWindowStartingActionMode(ActionMode.Callback callback, int type) {
-        return localCallback.onWindowStartingActionMode(callback, type);
+        return wrappedCallback.onWindowStartingActionMode(callback, type);
     }
 
     @SuppressLint("NewApi")
     @Override
     public void onActionModeStarted(ActionMode mode) {
-        localCallback.onActionModeStarted(mode);
+        wrappedCallback.onActionModeStarted(mode);
     }
 
     @SuppressLint("NewApi")
     @Override
     public void onActionModeFinished(ActionMode mode) {
-        localCallback.onActionModeFinished(mode);
+        wrappedCallback.onActionModeFinished(mode);
     }
 }

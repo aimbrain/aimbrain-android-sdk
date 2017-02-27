@@ -3,6 +3,7 @@ package com.aimbrain.sdk;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 
@@ -39,15 +40,14 @@ import com.aimbrain.sdk.server.Server;
 import com.aimbrain.sdk.collectors.TextEventCollector;
 import com.aimbrain.sdk.server.SessionCallback;
 
+import java.lang.ref.WeakReference;
 import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.WeakHashMap;
 
 
 /**
@@ -57,7 +57,7 @@ public class Manager {
     private static final String TAG = Manager.class.getSimpleName();
     private static Manager manager;
 
-    private WeakHashMap<Window, AMBNWindowCallback> windowsMap;
+    private List<WeakReference<Window>> trackedWindows;
     private Server server;
     private Timer timer;
     private TimerTask timerTask;
@@ -76,7 +76,7 @@ public class Manager {
     }
 
     private Manager() {
-        this.windowsMap = new WeakHashMap<>();
+        this.trackedWindows = new ArrayList<>();
         this.privacyGuards = new ArrayList<>();
     }
 
@@ -102,24 +102,36 @@ public class Manager {
      */
     public void windowChanged(Window window) {
         Logger.d(TAG, "Window changed " + window);
-        if (this.windowsMap.containsKey(window)) {
-            Window.Callback currentCallback = window.getCallback();
-            if (currentCallback == null) {
-                Logger.v(TAG, "No callback");
-                AMBNWindowCallback callback = new AMBNWindowCallback(window);
-                this.windowsMap.put(window, callback);
+        beginTrackingWindow(window);
+    }
+
+    private void beginTrackingWindow(Window window) {
+        Window existingTracked = null;
+        for (WeakReference<Window> currentRef: trackedWindows) {
+            Window currentWindow = currentRef.get();
+            if (currentWindow != null && window.equals(currentWindow)) {
+                existingTracked = currentWindow;
+                break;
             }
-            else if (currentCallback instanceof AMBNWindowCallback) {
+        }
+
+        if (existingTracked != null) {
+            Window.Callback currentCallback = window.getCallback();
+            if (currentCallback instanceof AMBNWindowCallback) {
                 Logger.v(TAG, "AMBN callback as expected");
+            }
+            else if (currentCallback == null) {
+                Logger.v(TAG, "No callback for tracked window!");
+                new AMBNWindowCallback(window);
             }
             else {
                 Logger.v(TAG, "Unexpected callback:" + currentCallback);
-                AMBNWindowCallback callback = new AMBNWindowCallback(window);
-                this.windowsMap.put(window, callback);
+                new AMBNWindowCallback(window);
             }
-        } else {
-            AMBNWindowCallback callback = new AMBNWindowCallback(window);
-            this.windowsMap.put(window, callback);
+        }
+        else {
+            new AMBNWindowCallback(window);
+            this.trackedWindows.add(new WeakReference<>(window));
         }
     }
 
@@ -172,11 +184,22 @@ public class Manager {
             timer.cancel();
             timer = null;
         }
-        Iterator<Entry<Window, AMBNWindowCallback>> windowIterator = windowsMap.entrySet().iterator();
+
+        Iterator<WeakReference<Window>> windowIterator = trackedWindows.iterator();
         while (windowIterator.hasNext()) {
-            Entry<Window, AMBNWindowCallback> item = windowIterator.next();
-            Window window = item.getKey();
-            window.setCallback(item.getValue().getLocalCallback());
+            WeakReference<Window> item = windowIterator.next();
+            Window window = item.get();
+            if (window == null) {
+                continue;
+            }
+            Window.Callback callback = window.getCallback();
+            if (!(callback instanceof AMBNWindowCallback)) {
+                Log.d(TAG, "unexpected window callback " + callback);
+            }
+            else {
+                AMBNWindowCallback ambnCallback = (AMBNWindowCallback) callback;
+                window.setCallback(ambnCallback.getWrappedCallback());
+            }
             windowIterator.remove();
             Logger.v(TAG, "Removed callback from " + window);
         }
