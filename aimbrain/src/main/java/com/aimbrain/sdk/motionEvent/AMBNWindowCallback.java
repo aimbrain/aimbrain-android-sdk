@@ -31,7 +31,10 @@ public class AMBNWindowCallback implements Window.Callback {
     private WeakReference<Window> window;
 
     public AMBNWindowCallback(Window window) {
-        Window.Callback wrappedCallback = window.getCallback();
+        this.wrappedCallback = window.getCallback();
+        Logger.v(TAG, "wrapped window callback " + this.wrappedCallback);
+        this.window = new WeakReference<>(window);
+
         window.setCallback(this);
         window.getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(new ViewTreeObserver.OnGlobalFocusChangeListener() {
             @Override
@@ -42,10 +45,6 @@ public class AMBNWindowCallback implements Window.Callback {
                 }
             }
         });
-
-        Logger.v(TAG, "wrapped window callback " + wrappedCallback);
-        this.wrappedCallback = wrappedCallback;
-        this.window = new WeakReference<>(window);
     }
 
     public Window.Callback getWrappedCallback() {
@@ -60,91 +59,103 @@ public class AMBNWindowCallback implements Window.Callback {
         } else {
             Log.v(TAG, "dispatch with disposed window");
         }
-        return wrappedCallback.dispatchTouchEvent(event);
+        return wrappedCallback != null && wrappedCallback.dispatchTouchEvent(event);
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        return wrappedCallback.dispatchKeyEvent(event);
+        return wrappedCallback != null && wrappedCallback.dispatchKeyEvent(event);
     }
 
     @SuppressLint("NewApi")
     @Override
     public boolean dispatchKeyShortcutEvent(KeyEvent event) {
-        return wrappedCallback.dispatchKeyShortcutEvent(event);
+        return wrappedCallback != null && wrappedCallback.dispatchKeyShortcutEvent(event);
     }
 
 
     @Override
     public boolean dispatchTrackballEvent(MotionEvent event) {
-        return wrappedCallback.dispatchTrackballEvent(event);
+        return wrappedCallback != null && wrappedCallback.dispatchTrackballEvent(event);
     }
 
     @SuppressLint("NewApi")
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        return wrappedCallback.dispatchGenericMotionEvent(event);
+        return wrappedCallback != null && wrappedCallback.dispatchGenericMotionEvent(event);
     }
 
 
     @Override
     public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
-        return wrappedCallback.dispatchPopulateAccessibilityEvent(event);
+        return wrappedCallback != null && wrappedCallback.dispatchPopulateAccessibilityEvent(event);
     }
 
     @Override
     public View onCreatePanelView(int featureId) {
-        return wrappedCallback.onCreatePanelView(featureId);
+        return wrappedCallback != null ? wrappedCallback.onCreatePanelView(featureId) : null;
     }
 
     @Override
     public boolean onCreatePanelMenu(int featureId, Menu menu) {
-        return wrappedCallback.onCreatePanelMenu(featureId, menu);
+        return wrappedCallback != null && wrappedCallback.onCreatePanelMenu(featureId, menu);
     }
 
     @Override
     public boolean onPreparePanel(int featureId, View view, Menu menu) {
-        return wrappedCallback.onPreparePanel(featureId, view, menu);
+        return wrappedCallback != null && wrappedCallback.onPreparePanel(featureId, view, menu);
     }
 
     @Override
     public boolean onMenuOpened(int featureId, Menu menu) {
-        return wrappedCallback.onMenuOpened(featureId, menu);
+        return wrappedCallback != null && wrappedCallback.onMenuOpened(featureId, menu);
     }
 
     @Override
     public boolean onMenuItemSelected(int featureId, MenuItem item) {
-        return wrappedCallback.onMenuItemSelected(featureId, item);
+        return wrappedCallback != null && wrappedCallback.onMenuItemSelected(featureId, item);
     }
 
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams attrs) {
-        wrappedCallback.onWindowAttributesChanged(attrs);
+        if (wrappedCallback != null) {
+            wrappedCallback.onWindowAttributesChanged(attrs);
+        }
     }
 
     @Override
     public void onContentChanged() {
-        wrappedCallback.onContentChanged();
+        if (wrappedCallback != null) {
+            wrappedCallback.onContentChanged();
+        }
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-        wrappedCallback.onWindowFocusChanged(hasFocus);
+        if (wrappedCallback != null) {
+            wrappedCallback.onWindowFocusChanged(hasFocus);
+        }
     }
 
     @Override
     public void onAttachedToWindow() {
-        wrappedCallback.onAttachedToWindow();
+        if (wrappedCallback != null) {
+            wrappedCallback.onAttachedToWindow();
+        }
     }
 
     @Override
     public void onDetachedFromWindow() {
-        wrappedCallback.onDetachedFromWindow();
+        if (wrappedCallback != null) {
+            wrappedCallback.onDetachedFromWindow();
+        }
     }
 
     @Override
     public void onPanelClosed(int featureId, Menu menu) {
-        wrappedCallback.onPanelClosed(featureId, menu);
+        if (wrappedCallback != null) {
+            wrappedCallback.onPanelClosed(featureId, menu);
+        }
     }
 
     @Override
@@ -155,31 +166,35 @@ public class AMBNWindowCallback implements Window.Callback {
     @TargetApi(Build.VERSION_CODES.M)
     @Override
     public boolean onSearchRequested(SearchEvent searchEvent) {
-        return wrappedCallback.onSearchRequested(searchEvent);
+        return wrappedCallback != null && wrappedCallback.onSearchRequested(searchEvent);
     }
 
     @SuppressLint("NewApi")
     @Override
     public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
-        return wrappedCallback.onWindowStartingActionMode(callback);
+        return wrappedCallback != null ? wrappedCallback.onWindowStartingActionMode(callback) : null;
     }
 
     @TargetApi(Build.VERSION_CODES.M)
     @Nullable
     @Override
     public ActionMode onWindowStartingActionMode(ActionMode.Callback callback, int type) {
-        return wrappedCallback.onWindowStartingActionMode(callback, type);
+        return wrappedCallback != null ? wrappedCallback.onWindowStartingActionMode(callback, type) : null;
     }
 
     @SuppressLint("NewApi")
     @Override
     public void onActionModeStarted(ActionMode mode) {
-        wrappedCallback.onActionModeStarted(mode);
+        if (wrappedCallback != null) {
+            wrappedCallback.onActionModeStarted(mode);
+        }
     }
 
     @SuppressLint("NewApi")
     @Override
     public void onActionModeFinished(ActionMode mode) {
-        wrappedCallback.onActionModeFinished(mode);
+        if (wrappedCallback != null) {
+            wrappedCallback.onActionModeFinished(mode);
+        }
     }
 }
