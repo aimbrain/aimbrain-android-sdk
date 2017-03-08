@@ -8,14 +8,16 @@ import com.aimbrain.sdk.collectors.SensorEventCollector;
 import com.aimbrain.sdk.collectors.TextEventCollector;
 import com.aimbrain.sdk.util.Logger;
 
+import java.lang.ref.WeakReference;
+
 
 public class TextEventListener implements TextWatcher {
     private static final String TAG = TextEventListener.class.getSimpleName();
 
-    private View view;
+    private WeakReference<View> viewRef;
 
     public TextEventListener(View view) {
-        this.view = view;
+        this.viewRef = new WeakReference<>(view);
     }
 
     @Override
@@ -28,8 +30,11 @@ public class TextEventListener implements TextWatcher {
 
     @Override
     public void afterTextChanged(Editable s) {
-        SensorEventCollector.getInstance().startCollectingData(500);
-        TextEventCollector.getInstance().textChanged(s.toString(), System.currentTimeMillis(), view);
-        Logger.v(TAG, s.toString());
+        View view = viewRef.get();
+        if (view != null) {
+            SensorEventCollector.getInstance().startCollectingData(500);
+            TextEventCollector.getInstance().textChanged(s.toString(), System.currentTimeMillis(), view);
+            Logger.v(TAG, s.toString());
+        }
     }
 }
