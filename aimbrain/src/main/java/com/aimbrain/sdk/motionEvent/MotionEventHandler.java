@@ -50,6 +50,8 @@ public class MotionEventHandler {
     private View findViewAtWindowPoint(ViewGroup viewGroup, float x, float y) {
         for (int i = viewGroup.getChildCount()-1; i >= 0; i--) {
             final View child = viewGroup.getChildAt(i);
+            if(Manager.getInstance().isTouchTrackingIgnored(child))
+                continue;
             if(isPointInView(x, y, child)) {
                 if (child instanceof ViewGroup) {
                     return findViewAtWindowPoint((ViewGroup) child, x, y);

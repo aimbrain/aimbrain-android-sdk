@@ -33,6 +33,7 @@ import com.aimbrain.sdk.models.BehaviouralDataModel;
 import com.aimbrain.sdk.motionEvent.AMBNWindowCallback;
 import com.aimbrain.sdk.collectors.MotionEventCollector;
 import com.aimbrain.sdk.privacy.PrivacyGuard;
+import com.aimbrain.sdk.privacy.TouchTrackingGuard;
 import com.aimbrain.sdk.collectors.SensorEventCollector;
 import com.aimbrain.sdk.server.AMBNResponseErrorListener;
 import com.aimbrain.sdk.server.ScoreCallback;
@@ -63,6 +64,7 @@ public class Manager {
     private TimerTask timerTask;
     private AMBNActivityLifecycleCallback activityLifecycleCallback;
     private ArrayList<PrivacyGuard> privacyGuards;
+    private ArrayList<TouchTrackingGuard> touchTrackingGuards;
 
     /**
      * Returns singleton object of the class
@@ -78,6 +80,7 @@ public class Manager {
     private Manager() {
         this.trackedWindows = new ArrayList<>();
         this.privacyGuards = new ArrayList<>();
+        this.touchTrackingGuards = new ArrayList<>();
     }
 
     /**
@@ -228,6 +231,33 @@ public class Manager {
     public boolean isViewIgnored(View view) {
         for (PrivacyGuard privacyGuard : privacyGuards) {
             if (privacyGuard.isViewIgnored(view)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Adds touch tracking guard.
+     *
+     * @param touchTrackingGuard touch tracking guard to be added
+     */
+    public void addTouchTrackingGuard(TouchTrackingGuard touchTrackingGuard) {
+        if (!touchTrackingGuards.contains(touchTrackingGuard)) {
+            Logger.v(TAG, "Add touch tracking guard");
+            touchTrackingGuards.add(touchTrackingGuard);
+        }
+    }
+
+    /**
+     * Returns true if given view (or its parent) is added to any touch tracking guard defined.
+     *
+     * @param view view to be checked
+     * @return true if view is ignored while going through view hierarchy
+     */
+    public boolean isTouchTrackingIgnored(View view) {
+        for (TouchTrackingGuard touchTrackingGuard : touchTrackingGuards) {
+            if (touchTrackingGuard.isViewIgnored(view)) {
                 return true;
             }
         }
@@ -819,4 +849,3 @@ public class Manager {
         return server.getSerializedSendProvidedVoiceCaptures(captures, metadata, voiceAction);
     }
 }
-
