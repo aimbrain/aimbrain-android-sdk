@@ -38,11 +38,17 @@ public class SensitiveViewGuard {
     }
 
     public static void addView(View view){
-        getInstance().sensitiveViews.add(new WeakReference<View>(view));
+        if (view != null) {
+            getInstance().sensitiveViews.add(new WeakReference<>(view));
+        }
     }
 
 
     public static boolean isViewSensitive(View view) {
+        if (view == null) {
+            return false;
+        }
+
         for(WeakReference<View> reference : getInstance().sensitiveViews)
         {
             if(reference.get() == view)

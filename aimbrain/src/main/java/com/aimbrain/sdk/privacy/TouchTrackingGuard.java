@@ -26,11 +26,13 @@ public class TouchTrackingGuard {
      * @param ignoredViews set of protected views
      */
     public TouchTrackingGuard(Set<View> ignoredViews) {
-        Logger.v(TAG, "touch tracking guard, " + ignoredViews.size() + " views");
         this.valid = true;
         this.ignoredViews = new HashSet<>();
-        for(View view : ignoredViews)
-            this.ignoredViews.add(new WeakReference<>(view));
+        if (ignoredViews != null) {
+            Logger.v(TAG, "touch tracking guard, " + ignoredViews.size() + " views");
+            for (View view : ignoredViews)
+                this.ignoredViews.add(new WeakReference<>(view));
+        }
     }
 
 
@@ -44,21 +46,27 @@ public class TouchTrackingGuard {
         if(!valid)
             return false;
 
-        if(isDescendantOfIgnoredView(view))
-            return true;
+        if (view == null) {
+            return false;
+        }
 
-        return false;
+        return isDescendantOfIgnoredView(view);
+
     }
 
     private boolean isDescendantOfIgnoredView(View view) {
-        for(WeakReference<View> reference : ignoredViews)
-        {
+
+        if (view == null) {
+            return false;
+        }
+
+        for(WeakReference<View> reference : ignoredViews) {
             if(reference.get() == view)
                 return true;
         }
 
         ViewParent parent = view.getParent();
-        if( parent != null && parent instanceof View)
+        if ( parent != null && parent instanceof View)
             return isDescendantOfIgnoredView((View)parent);
 
         return false;

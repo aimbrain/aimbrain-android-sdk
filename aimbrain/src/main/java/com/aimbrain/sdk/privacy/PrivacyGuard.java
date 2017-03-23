@@ -59,13 +59,18 @@ public class PrivacyGuard {
         if(ignoreAllViews)
             return true;
 
-        if(isDescendantOfIgnoredView(view))
-            return true;
+        if (view == null) {
+            return false;
+        }
 
-        return false;
+        return isDescendantOfIgnoredView(view);
+
     }
 
     private boolean isDescendantOfIgnoredView(View view) {
+        if (view == null) {
+            return false;
+        }
         for(WeakReference<View> reference : ignoredViews)
         {
             if(reference.get() == view)

@@ -75,6 +75,9 @@ public class ViewIdMapper {
     }
 
     public String getViewId(View view) {
+        if (view == null) {
+            return "";
+        }
         if (idMap.containsKey(view))
             return idMap.get(view);
         return Integer.toString(view.getId());
@@ -82,6 +85,9 @@ public class ViewIdMapper {
 
     public LinkedList<String> extractViewPath(View view) {
         LinkedList<String> path = new LinkedList<>();
+        if (view == null) {
+            return path;
+        }
         if(!getViewId(view).equals(Integer.toString(View.NO_ID)))
             path.addLast(getSecureViewId(view));
         ViewParent parent = view.getParent();

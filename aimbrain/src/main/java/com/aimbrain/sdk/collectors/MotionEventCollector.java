@@ -55,12 +55,18 @@ public class MotionEventCollector extends EventCollector {
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
+                if (mPointerIdMap.get(pointerId) == null) {
+                    mPointerIdMap.put(pointerId, mPointerCount++);
+                }
                 touchId = mTouchIdCount + mPointerIdMap.get(pointerId);
                 if (!ignored) {
                     addCollectedData(new TouchEventModel(touchId, touchId, motionEvent, timestamp, pointerIndex, view, sensitive));
                 }
                 break;
             case MotionEvent.ACTION_POINTER_UP:
+                if (mPointerIdMap.get(pointerId) == null) {
+                    mPointerIdMap.put(pointerId, mPointerCount++);
+                }
                 touchId = this.mTouchIdCount + mPointerIdMap.get(pointerId);
                 if (!ignored) {
                     addCollectedData(new TouchEventModel(touchId, touchId, motionEvent, timestamp, pointerIndex, view, sensitive));
@@ -68,6 +74,9 @@ public class MotionEventCollector extends EventCollector {
                 mPointerIdMap.remove(pointerId);
                 break;
             case MotionEvent.ACTION_UP:
+                if (mPointerIdMap.get(pointerId) == null) {
+                    mPointerIdMap.put(pointerId, mPointerCount++);
+                }
                 touchId = this.mTouchIdCount + mPointerIdMap.get(pointerId);
                 if (!ignored) {
                     addCollectedData(new TouchEventModel(touchId, touchId, motionEvent, timestamp, pointerIndex, view, sensitive));
