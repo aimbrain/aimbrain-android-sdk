@@ -53,7 +53,7 @@ public class AutoFitSurfaceView extends SurfaceView {
         if (!hasValidAspectRatio()) {
             setMeasuredDimension(width, height);
         } else {
-            if (width < height * mRatioWidth / mRatioHeight) {
+            if (width < height * mRatioHeight / mRatioWidth) {
                 setMeasuredDimension(width, width * mRatioHeight / mRatioWidth);
             } else {
                 setMeasuredDimension(height * mRatioWidth / mRatioHeight, height);

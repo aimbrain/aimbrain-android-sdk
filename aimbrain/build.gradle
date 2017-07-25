@@ -2,13 +2,13 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "23.0.1"
+    buildToolsVersion '25.0.0'
 
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 23
-        versionCode 14
-        versionName "0.6.8"
+        versionCode 17
+        versionName "v0.6.10"
     }
 
     buildTypes {
@@ -27,10 +27,16 @@ android {
             }
         }
     }
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:23.1.0'
     compile 'com.mcxiaoke.volley:library:1.0.19'
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.json:json:20160810'
+    testCompile 'org.mockito:mockito-core:1.10.19'
 }

@@ -1,5 +1,6 @@
 package com.aimbrain.sdk.viewManager;
 
+import android.support.annotation.VisibleForTesting;
 import android.view.View;
 import android.view.ViewParent;
 
@@ -17,8 +18,8 @@ public class ViewIdMapper {
     private WeakHashMap<View, String> idMap;
     private static ViewIdMapper instance;
 
-
-    private ViewIdMapper() {
+    @VisibleForTesting
+    protected ViewIdMapper() {
         instance = this;
         this.idMap = new WeakHashMap<>();
     }

@@ -180,4 +180,10 @@ public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
         }
     };
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        bmp = null;
+        mutableBitmap = null;
+    }
 }

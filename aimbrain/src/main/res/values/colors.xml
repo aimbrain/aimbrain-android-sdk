@@ -4,12 +4,12 @@
     <color name="color_circle_recording_inactive">#dcecff</color>
     <color name="color_circle_recording_active">#1178ff</color>
 
-
     <color name="color_record_button_idle">#44B84F</color>
     <color name="color_record_button_touched">#266b2d</color>
     <color name="color_record_button_recording">#c0392b</color>
-
+    <color name="color_record_button_progress">#ffa399</color>
 
     <color name="color_record_center">#ffffff</color>
     <color name="color_record_rings">#ffffff</color>
+    <color name="color_record_rings_dark">#aaaaaa</color>
 </resources>

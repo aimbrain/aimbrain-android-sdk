@@ -8,69 +8,91 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
-import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.view.View;
 
 public class OverlayView extends View {
 
+    private Paint backgroundPaint;
+    private Paint transparentPaint;
+    private Bitmap bitmap;
+    private Canvas canvas;
+
     public OverlayView(Context context) {
         super(context);
+        init();
     }
 
     public OverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init();
     }
 
     public OverlayView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    private void init() {
+        backgroundPaint = new Paint();
+        backgroundPaint.setColor(Color.BLACK);
+        backgroundPaint.setAlpha(128);
+
+        transparentPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        transparentPaint.setColor(Color.TRANSPARENT);
+        transparentPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+        transparentPaint.setStyle(Paint.Style.FILL);
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+
+        if (bitmap == null) {
+            createBitmap(w, h);
+        } else if (w != oldw || h != oldh) {
+            createBitmap(w, h);
+        }
+
+        super.onSizeChanged(w, h, oldw, oldh);
+    }
+
+    private void createBitmap(int w, int h) {
+        bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        canvas = new Canvas(bitmap);
+        canvas.drawRect(new RectF(0, 0, w, h), backgroundPaint);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        Bitmap bmp = drawBitmap(getMeasuredWidth(), getMeasuredHeight());
-        canvas.drawBitmap(bmp, 0, 0, null);
+        clipRoundRect(getWidth(), getHeight());
+        canvas.drawBitmap(bitmap, 0, 0, null);
     }
 
-    public RectF getMaskBounds() {
-        float maskWidth = getMaskWidth();
-        float maskHeight = getMaskHeight();
-        float horizontalMargin = (float) (((float) getMeasuredWidth() - maskWidth) / 2.0);
-        float verticalMargin = (float) (((float) getMeasuredHeight() - maskHeight) / 2.0);
+    public RectF getMaskBounds(int w, int h) {
+        float maskWidth = getMaskWidth(w);
+        float maskHeight = getMaskHeight(w);
+        float horizontalMargin = (float) (((float) w - maskWidth) / 2.0);
+        float verticalMargin = (float) (((float) h - maskHeight) / 2.0);
         return new RectF(horizontalMargin, verticalMargin, horizontalMargin + maskWidth, verticalMargin + maskHeight);
     }
 
-    public float getMaskHeight() {
-        return (float) (FaceCaptureActivity.BOX_RATIO * getMaskWidth());
+    public float getMaskHeight(int w) {
+        return (float) (FaceCaptureActivity.BOX_RATIO * getMaskWidth(w));
     }
 
-    public float getMaskWidth() {
-        return (float) (getMeasuredWidth() * FaceCaptureActivity.BOX_WIDTH);
+    public float getMaskWidth(int w) {
+        return (float) (w * FaceCaptureActivity.BOX_WIDTH);
     }
 
-    @NonNull
-    private Paint getOverlayBackgroundPaint() {
-        Paint backgroundPaint = new Paint();
-        backgroundPaint.setColor(Color.BLACK);
-        backgroundPaint.setAlpha(128);
-        return backgroundPaint;
+    private void clipRoundRect(int w, int h) {
+        RectF maskBounds = getMaskBounds(w, h);
+        canvas.drawRoundRect(maskBounds, maskBounds.top, maskBounds.top, transparentPaint);
     }
 
-    @NonNull
-    private Paint getTransparentPaint() {
-        Paint transparentPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        transparentPaint.setColor(Color.TRANSPARENT);
-        transparentPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
-        transparentPaint.setStyle(Paint.Style.FILL);
-        return transparentPaint;
-    }
-
-    private Bitmap drawBitmap(int w, int h) {
-        Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        RectF maskBounds = getMaskBounds();
-        canvas.drawRect(new RectF(0, 0, (float) getMeasuredWidth(), (float) getMeasuredHeight()), getOverlayBackgroundPaint());
-        canvas.drawRoundRect(maskBounds, maskBounds.top, maskBounds.top, getTransparentPaint());
-        return bitmap;
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        bitmap = null;
+        canvas = null;
     }
 }

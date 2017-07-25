@@ -30,7 +30,7 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <com.aimbrain.sdk.faceCapture.views.RecordButton
+        <com.aimbrain.sdk.views.ProgressRecordButtonView
             android:id="@+id/buttonRecord"
             android:clickable="true"
             android:layout_width="0dp"

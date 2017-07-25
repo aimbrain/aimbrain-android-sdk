@@ -1,5 +1,6 @@
 package com.aimbrain.sdk.privacy;
 
+import android.support.annotation.VisibleForTesting;
 import android.view.View;
 import android.view.ViewParent;
 
@@ -25,19 +26,19 @@ public class SensitiveViewGuard {
 
     private static SensitiveViewGuard instance;
 
-
-    private SensitiveViewGuard() {
+    @VisibleForTesting
+    protected SensitiveViewGuard() {
         sensitiveViews = new HashSet<>();
         salt = generateRandomSalt();
     }
 
     public static SensitiveViewGuard getInstance() {
-        if(instance == null)
+        if (instance == null)
             instance = new SensitiveViewGuard();
         return instance;
     }
 
-    public static void addView(View view){
+    public static void addView(View view) {
         if (view != null) {
             getInstance().sensitiveViews.add(new WeakReference<>(view));
         }
@@ -51,19 +52,19 @@ public class SensitiveViewGuard {
 
         for(WeakReference<View> reference : getInstance().sensitiveViews)
         {
-            if(reference.get() == view)
+            if (reference.get() == view)
                 return true;
         }
 
         ViewParent parent = view.getParent();
-        if( parent != null && parent instanceof View)
-            return isViewSensitive((View)parent);
+        if (parent != null && parent instanceof View)
+            return isViewSensitive((View) parent);
 
         return false;
     }
 
     public static void setSalt(byte[] salt) {
-        if(salt.length == SALT_BYTES)
+        if (salt.length == SALT_BYTES)
             getInstance().salt = salt;
         else
             throw new InvalidParameterException("Provided salt must be of length " + SALT_BYTES);
@@ -84,8 +85,7 @@ public class SensitiveViewGuard {
         return bytesToString(getInstance().salt);
     }
 
-    public static String calculateHash(String input)
-    {
+    public static String calculateHash(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(input.getBytes("UTF-8"));
@@ -96,14 +96,18 @@ public class SensitiveViewGuard {
         return null;
     }
 
-    public static String bytesToString(byte[] input)
-    {
+    public static String bytesToString(byte[] input) {
         StringBuffer hexString = new StringBuffer();
         for (int i = 0; i < input.length; i++) {
             String hex = Integer.toHexString(0xff & input[i]);
-            if(hex.length() == 1) hexString.append('0');
+            if (hex.length() == 1) hexString.append('0');
             hexString.append(hex);
         }
         return hexString.toString();
+    }
+
+    @VisibleForTesting
+    protected void setInstance() {
+        instance = this;
     }
 }

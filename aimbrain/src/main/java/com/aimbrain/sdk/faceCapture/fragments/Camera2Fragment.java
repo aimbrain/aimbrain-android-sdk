@@ -45,7 +45,7 @@ import com.aimbrain.sdk.faceCapture.VideoFaceCaptureActivity;
 import com.aimbrain.sdk.faceCapture.helpers.Camera2ResolutionPicker;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
-import com.aimbrain.sdk.faceCapture.views.RecordButton;
+import com.aimbrain.sdk.views.ProgressRecordButtonView;
 import com.aimbrain.sdk.file.Files;
 import com.aimbrain.sdk.util.Logger;
 
@@ -235,6 +235,12 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
             @Override
             public void onGlobalLayout() {
                 updateTextureMarginsToFillParent();
+                ViewTreeObserver vto = mRootView.getViewTreeObserver();
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                    vto.removeGlobalOnLayoutListener(this);
+                } else {
+                    vto.removeOnGlobalLayoutListener(this);
+                }
             }
         });
         return mRootView;
@@ -528,8 +534,9 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
     }
 
     private void startRecordingVideo() {
-        if(recordButton instanceof RecordButton) {
-            ((RecordButton)recordButton).startRecording();
+        if(recordButton instanceof ProgressRecordButtonView) {
+            int durationMillis = getArguments().getInt(VideoFaceCaptureActivity.EXTRA_DURATION_MILLIS);
+            ((ProgressRecordButtonView)recordButton).showRecordingStarted(durationMillis / 1000);
         }
         Activity activity = getActivity();
         if (activity instanceof LayoutOverlayObserver) {
@@ -592,8 +599,8 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
     }
 
     private void stopRecordingVideo() {
-        if(recordButton instanceof RecordButton) {
-            ((RecordButton) recordButton).stopRecording();
+        if(recordButton instanceof ProgressRecordButtonView) {
+            ((ProgressRecordButtonView) recordButton).showRecordingStopped();
         }
         Activity activity = getActivity();
         if (activity instanceof LayoutOverlayObserver) {
@@ -617,7 +624,6 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
         LayoutOverlayObserver observer = (LayoutOverlayObserver) activity;
 
         View overlayView = observer.getLayoutOverlayView();
-
 
         if (overlayView == null) {
             LayoutInflater inflater = (LayoutInflater) getActivity()
@@ -668,6 +674,7 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
 
 
         RelativeLayout container = ((RelativeLayout) getView().findViewById(R.id.overlayViewContainer));
+        container.removeAllViews();
         container.addView(overlayView);
 
         if(recordButton == null) {
@@ -759,5 +766,24 @@ public class Camera2Fragment extends AbstractCameraPermissionFragment {
     public void onPermissionRequestResume() {
         createWithPermissions();
         setupCamera();
+        relayoutOverlay(); // permission prompt messes up overlay sizes, layout & remeasure overlay
+    }
+
+    private void relayoutOverlay() {
+        final View view = getView();
+        if (view != null) {
+            view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    updateButtonPosition();
+                    ViewTreeObserver vto = view.getViewTreeObserver();
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                        vto.removeGlobalOnLayoutListener(this);
+                    } else {
+                        vto.removeOnGlobalLayoutListener(this);
+                    }
+                }
+            });
+        }
     }
 }

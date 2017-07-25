@@ -1,4 +1,4 @@
-package com.aimbrain.sdk.voiceCapture;
+package com.aimbrain.sdk.views;
 
 import android.animation.ValueAnimator;
 import android.content.Context;

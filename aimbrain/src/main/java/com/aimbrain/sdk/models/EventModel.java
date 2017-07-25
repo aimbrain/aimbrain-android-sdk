@@ -5,5 +5,6 @@ import org.json.JSONObject;
 
 
 public abstract class EventModel {
+    public long timestamp;
     public abstract JSONObject toJSON() throws JSONException;
 }

@@ -1,6 +1,7 @@
 package com.aimbrain.sdk.models;
 
 import android.graphics.PointF;
+import android.support.annotation.VisibleForTesting;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -24,7 +25,6 @@ public class TouchEventModel extends EventModel {
     private float force;
     private float radius;
     private int phase;
-    private long timestamp;
 
     public TouchEventModel(int touchId, int groupId, MotionEvent event, long timestamp, int pointerIndex, View view, boolean sensitive) {
         this.touchId = touchId;
@@ -60,7 +60,8 @@ public class TouchEventModel extends EventModel {
         return jsonObject;
     }
 
-    private int convertToIosTouchPhase(int actionMasked) {
+    @VisibleForTesting
+    protected int convertToIosTouchPhase(int actionMasked) {
         switch(actionMasked) {
             case MotionEvent.ACTION_DOWN:
                 return 0;

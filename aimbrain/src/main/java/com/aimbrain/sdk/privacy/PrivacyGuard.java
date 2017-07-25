@@ -1,7 +1,9 @@
 package com.aimbrain.sdk.privacy;
 
+import android.support.annotation.VisibleForTesting;
 import android.view.View;
 import android.view.ViewParent;
+import android.widget.EditText;
 
 import com.aimbrain.sdk.util.Logger;
 
@@ -67,10 +69,12 @@ public class PrivacyGuard {
 
     }
 
-    private boolean isDescendantOfIgnoredView(View view) {
+    @VisibleForTesting
+    protected boolean isDescendantOfIgnoredView(View view) {
         if (view == null) {
             return false;
         }
+
         for(WeakReference<View> reference : ignoredViews)
         {
             if(reference.get() == view)
@@ -82,6 +86,20 @@ public class PrivacyGuard {
             return isDescendantOfIgnoredView((View)parent);
 
         return false;
+    }
+
+    public void revokeEditTextFocus(){
+        if(ignoredViews != null) {
+            for(WeakReference<View> reference : ignoredViews)
+            {
+                View view = reference.get();
+                if(view instanceof EditText && view.hasFocus()){
+                    view.clearFocus();
+                    view.requestFocus();
+                    return;
+                }
+            }
+        }
     }
 
     /**

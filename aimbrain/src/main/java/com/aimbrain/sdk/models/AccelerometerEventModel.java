@@ -11,7 +11,6 @@ public class AccelerometerEventModel extends EventModel {
     private float x;
     private float y;
     private float z;
-    private long timestamp;
 
     public AccelerometerEventModel(SensorEvent sensorEvent, long timestamp) {
         this.x = sensorEvent.values[0];

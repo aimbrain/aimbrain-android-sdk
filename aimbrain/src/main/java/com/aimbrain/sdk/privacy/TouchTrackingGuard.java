@@ -1,5 +1,6 @@
 package com.aimbrain.sdk.privacy;
 
+import android.support.annotation.VisibleForTesting;
 import android.view.View;
 import android.view.ViewParent;
 
@@ -54,7 +55,8 @@ public class TouchTrackingGuard {
 
     }
 
-    private boolean isDescendantOfIgnoredView(View view) {
+    @VisibleForTesting
+    protected boolean isDescendantOfIgnoredView(View view) {
 
         if (view == null) {
             return false;

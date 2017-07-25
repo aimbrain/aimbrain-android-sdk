@@ -14,7 +14,6 @@ import java.util.LinkedList;
 public class TextEventModel extends EventModel {
 
     private String text;
-    private long timestamp;
     private LinkedList<String> viewPath;
 
     public TextEventModel(String text, long timestamp, View view) {

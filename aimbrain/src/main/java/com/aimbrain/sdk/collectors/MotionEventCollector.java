@@ -1,5 +1,6 @@
 package com.aimbrain.sdk.collectors;
 
+import android.support.annotation.VisibleForTesting;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -18,21 +19,26 @@ public class MotionEventCollector extends EventCollector {
     private int mPointerCount;
     private HashMap<Integer, Integer> mPointerIdMap;
     private static MotionEventCollector mCollector;
+    /**
+     * average motion event size in bytes
+     */
+    private final static int APPROXIMATE_MOTION_EVENT_SIZE_BYTES = 48;
 
-    public static MotionEventCollector getInstance(){
-        if(mCollector == null){
+    public static MotionEventCollector getInstance() {
+        if (mCollector == null) {
             mCollector = new MotionEventCollector();
         }
         return mCollector;
     }
 
-    private MotionEventCollector() {
+    @VisibleForTesting
+    protected MotionEventCollector() {
         this.mTouchIdCount = 0;
         this.mPointerCount = 0;
         this.mPointerIdMap = new HashMap<>();
     }
 
-    private void processMotionEvent(MotionEvent motionEvent, View view, long timestamp, int pointerIndex){
+    private void processMotionEvent(MotionEvent motionEvent, View view, long timestamp, int pointerIndex) {
         int pointerId = motionEvent.getPointerId(pointerIndex);
         int touchId;
 
@@ -104,4 +110,20 @@ public class MotionEventCollector extends EventCollector {
             }
         }
     }
+
+    @VisibleForTesting
+    protected HashMap<Integer, Integer> getmPointerIdMap() {
+        return mPointerIdMap;
+    }
+
+    @Override
+    public int sizeOfElements() {
+        return getCountOfElements() * APPROXIMATE_MOTION_EVENT_SIZE_BYTES;
+    }
+
+    @Override
+    int sizeOfElements(int count) {
+        return count * APPROXIMATE_MOTION_EVENT_SIZE_BYTES;
+    }
+
 }

@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
@@ -16,6 +17,7 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -33,9 +35,9 @@ import com.aimbrain.sdk.faceCapture.helpers.LayoutUtil;
 import com.aimbrain.sdk.faceCapture.helpers.LegacyResolutionPicker;
 import com.aimbrain.sdk.faceCapture.helpers.ResolutionPicker;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
-import com.aimbrain.sdk.faceCapture.views.RecordButton;
 import com.aimbrain.sdk.file.Files;
 import com.aimbrain.sdk.util.Logger;
+import com.aimbrain.sdk.views.ProgressRecordButtonView;
 
 import java.io.IOException;
 import java.util.List;
@@ -166,8 +168,8 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     @Override
     public void onPause() {
         super.onPause();
-        releaseCamera();
         releaseMediaRecorder();
+        releaseCamera();
     }
 
     protected void setupCamera() {
@@ -296,7 +298,7 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         ViewGroup.LayoutParams layoutParamsControl
                 = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT);
-        ((ViewGroup) getView().getParent()).addView(mCameraOverlay, layoutParamsControl);
+        ((ViewGroup) getView()).addView(mCameraOverlay, layoutParamsControl);
     }
 
     private void setupOverlayTexts(String upperText, String lowerText) {
@@ -479,8 +481,8 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     }
 
     private void notifyParentRecordingStopped() {
-        if (recordButton instanceof RecordButton) {
-            ((RecordButton) recordButton).stopRecording();
+        if (recordButton instanceof ProgressRecordButtonView) {
+            ((ProgressRecordButtonView) recordButton).showRecordingStopped();
         }
         Activity activity = getActivity();
         if (activity instanceof LayoutOverlayObserver) {
@@ -530,8 +532,9 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
     }
 
     private void captureVideo() {
-        if (recordButton instanceof RecordButton) {
-            ((RecordButton) recordButton).startRecording();
+        if (recordButton instanceof ProgressRecordButtonView) {
+            int durationMillis = getArguments().getInt(VideoFaceCaptureActivity.EXTRA_DURATION_MILLIS);
+            ((ProgressRecordButtonView)recordButton).showRecordingStarted(durationMillis / 1000);
         }
         Activity activity = getActivity();
         if (activity instanceof LayoutOverlayObserver) {
@@ -737,12 +740,34 @@ public class CameraLegacyFragment extends AbstractCameraPermissionFragment {
         if (previewSurfaceView == null) {
             setupCameraPreview();
         }
+
         if (mCameraOverlay == null) {
             setupOverlay();
             String upperText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT);
             String lowerText = getArguments().getString(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT);
             setupOverlayTexts(upperText, lowerText);
         }
+
         setupCamera();
+
+        relayoutOverlay(); // permission prompt messes up overlay sizes, layout & remeasure overlay
+    }
+
+    private void relayoutOverlay() {
+        final View view = getView();
+        if (view != null) {
+            view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    refreshOverlayElements();
+                    ViewTreeObserver vto = view.getViewTreeObserver();
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                        vto.removeGlobalOnLayoutListener(this);
+                    } else {
+                        vto.removeOnGlobalLayoutListener(this);
+                    }
+                }
+            });
+        }
     }
 }

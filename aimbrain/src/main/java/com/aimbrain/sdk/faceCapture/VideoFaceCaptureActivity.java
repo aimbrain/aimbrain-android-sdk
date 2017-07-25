@@ -153,8 +153,5 @@ public class VideoFaceCaptureActivity extends Activity
 
     @Override
     public void setRecordButtonPosition(Rect position) {
-
     }
-
-
 }

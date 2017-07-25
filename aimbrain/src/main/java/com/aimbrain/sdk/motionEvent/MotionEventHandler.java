@@ -64,10 +64,7 @@ public class MotionEventHandler {
 
     private boolean isPointInView(float x, float y, View view){
         Rect outRect = new Rect();
-        int[] viewStartLocation = new int[2];
-        view.getDrawingRect(outRect);
-        view.getLocationOnScreen(viewStartLocation);
-        outRect.offset(viewStartLocation[0], viewStartLocation[1]);
+        view.getGlobalVisibleRect(outRect);
         return outRect.contains((int)x, (int)y);
     }
 }

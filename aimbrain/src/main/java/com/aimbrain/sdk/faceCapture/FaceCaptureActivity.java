@@ -27,6 +27,7 @@ import android.view.WindowManager;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextSwitcher;
@@ -225,6 +226,7 @@ public abstract class FaceCaptureActivity extends Activity {
         if (camera != null) {
             Camera.Size cameraSize = getBestPreviewSize(screenSize.width, screenSize.height, camera.getParameters());
             float sizeRatio = (float) cameraSize.width / (float) cameraSize.height;
+            overlaySurface.setAspectRatio(screenSize.width, (int) (screenSize.width * sizeRatio));
             previewHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
             overlaySurfaceHolder.setFixedSize(screenSize.width, (int) (screenSize.width * sizeRatio));
         }
@@ -238,7 +240,7 @@ public abstract class FaceCaptureActivity extends Activity {
         RelativeLayout.LayoutParams upperTextLayoutParams = (RelativeLayout.LayoutParams) upperTextView.getLayoutParams();
         upperTextLayoutParams.height = (int) overlaySurface.getMaskBounds().top;
         upperTextView.requestLayout();
-        RelativeLayout.LayoutParams photoButtonLayoutParams = (RelativeLayout.LayoutParams) captureButton.getLayoutParams();
+        LinearLayout.LayoutParams photoButtonLayoutParams = (LinearLayout.LayoutParams) captureButton.getLayoutParams();
         photoButtonLayoutParams.setMargins(0, 0, 0, getPhotoButtonBottomMargin());
     }
 

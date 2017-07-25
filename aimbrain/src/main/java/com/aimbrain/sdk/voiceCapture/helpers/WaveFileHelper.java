@@ -14,7 +14,8 @@ import java.io.IOException;
 public class WaveFileHelper {
 
     public static final int AUDIO_SOURCE = MediaRecorder.AudioSource.MIC;
-    public static final int AUDIO_FREQUENCY = 22050;
+    public static final int FREQUENCY_NATIVE = -1;
+    public static final int[] AUDIO_FREQUENCIES = new int[]{22050, 16000, FREQUENCY_NATIVE, 44100, 11025, 8000};
     public static final int AUDIO_CHANNEL = AudioFormat.CHANNEL_IN_MONO;
     public static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     public static final int RECORDER_BPP = 16;
@@ -22,23 +23,23 @@ public class WaveFileHelper {
     public static final int CHANNELS_STEREO = 2;
     public static final String TAG = WaveFileHelper.class.getSimpleName();
 
-    public static byte[] getAudioBytesWithWaveHeaders(byte[] source) throws IOException {
+    public static byte[] getAudioBytesWithWaveHeaders(byte[] source, int sampleRate) throws IOException {
 
         ByteArrayOutputStream outByte = new ByteArrayOutputStream();
-        writeHeader(outByte, source.length);
+        writeHeader(outByte, source.length, sampleRate);
         outByte.write(source);
         return outByte.toByteArray();
 
     }
 
     private static void writeHeader(
-            ByteArrayOutputStream out, long totalAudioLen) throws IOException
-    {
+            ByteArrayOutputStream out, long totalAudioLen, int sampleRate) throws IOException {
         long totalDataLen = totalAudioLen + 36;
-        long longSampleRate = AUDIO_FREQUENCY;
+        long longSampleRate = sampleRate;
         int channels = CHANNELS_MONO; //mono
-        long byteRate = RECORDER_BPP * AUDIO_FREQUENCY * channels/8;
+        long byteRate = RECORDER_BPP * sampleRate * channels / 8;
 
+        Logger.v(TAG, "sample rate " + longSampleRate);
         Logger.v(TAG, "Written wav file size: " + totalDataLen);
         Logger.v(TAG, "Written wav total audio len: " + totalAudioLen);
 

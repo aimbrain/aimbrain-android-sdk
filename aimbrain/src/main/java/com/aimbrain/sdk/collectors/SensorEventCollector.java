@@ -14,8 +14,13 @@ public class SensorEventCollector extends EventCollector {
 
     private AccelerometerEventListener accelerometerEventListener;
 
-    public static SensorEventCollector getInstance(){
-        if(instance == null){
+    /**
+     * average sensor event size in bytes
+     */
+    private final static int APPROXIMATE_SENSOR_EVENT_SIZE_BYTES = 32;
+
+    public static SensorEventCollector getInstance() {
+        if (instance == null) {
             instance = new SensorEventCollector();
         }
         return instance;
@@ -34,5 +39,15 @@ public class SensorEventCollector extends EventCollector {
     public void startCollectingData(int samplingPeriodMs) {
         Logger.v(TAG, "start collecting data");
         accelerometerEventListener.startForPeriod(samplingPeriodMs);
+    }
+
+    @Override
+    public int sizeOfElements() {
+        return getCountOfElements() * APPROXIMATE_SENSOR_EVENT_SIZE_BYTES;
+    }
+
+    @Override
+    int sizeOfElements(int count) {
+        return count * APPROXIMATE_SENSOR_EVENT_SIZE_BYTES;
     }
 }
