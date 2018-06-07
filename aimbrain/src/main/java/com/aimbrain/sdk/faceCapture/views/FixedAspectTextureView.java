@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.aimbrain.sdk.faceCapture;
+package com.aimbrain.sdk.faceCapture.views;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -23,19 +23,19 @@ import android.view.TextureView;
 /**
  * A {@link TextureView} that can be adjusted to a specified aspect ratio.
  */
-public class AutoFitTextureView extends TextureView {
+public class FixedAspectTextureView extends TextureView {
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 
-    public AutoFitTextureView(Context context) {
+    public FixedAspectTextureView(Context context) {
         this(context, null);
     }
 
-    public AutoFitTextureView(Context context, AttributeSet attrs) {
+    public FixedAspectTextureView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public AutoFitTextureView(Context context, AttributeSet attrs, int defStyle) {
+    public FixedAspectTextureView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
     }
 

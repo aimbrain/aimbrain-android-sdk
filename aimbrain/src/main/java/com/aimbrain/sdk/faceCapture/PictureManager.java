@@ -6,6 +6,7 @@ import android.graphics.RectF;
 import android.util.Base64;
 
 import com.aimbrain.sdk.Manager;
+import com.aimbrain.sdk.faceCapture.views.FaceFinderUtil;
 import com.aimbrain.sdk.models.StringListDataModel;
 import com.aimbrain.sdk.server.FaceActions;
 import com.aimbrain.sdk.util.Logger;
@@ -24,8 +25,8 @@ public class PictureManager {
 
         int photo_w = photo.getWidth();
         int photo_h = photo.getHeight();
-        int box_w = (int) (photo_w * FaceCaptureActivity.BOX_WIDTH);
-        int box_h = (int) (FaceCaptureActivity.BOX_RATIO * box_w);
+        int box_w = (int) (photo_w * FaceFinderUtil.BOX_WIDTH);
+        int box_h = (int) (FaceFinderUtil.BOX_RATIO * box_w);
         int p_left = (int) ((photo_w - box_w) / 2 - box_w * 0.1);
         int p_width = (int) (box_w * 1.2);
         int p_top = (int) ((photo_h - box_h) / 2 - box_h * 0.1);

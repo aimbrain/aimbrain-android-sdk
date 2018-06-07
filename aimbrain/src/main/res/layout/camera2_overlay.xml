@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/transparent">
 
-    <com.aimbrain.sdk.faceCapture.OverlayView
+    <com.aimbrain.sdk.faceCapture.views.FaceFinderView
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
@@ -55,8 +55,21 @@
             android:id="@+id/lowerTextSwitcher"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"/>
+
+        <TextView
+            android:id="@+id/tokenTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
-            android:layout_centerVertical="true" />
+            android:layout_below="@+id/lowerTextSwitcher"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text=""
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textColor="#ffffff"
+            android:textSize="21sp"   />
     </RelativeLayout>
 
     <ProgressBar

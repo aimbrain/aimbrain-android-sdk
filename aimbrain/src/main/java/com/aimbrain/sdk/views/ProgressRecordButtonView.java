@@ -179,10 +179,7 @@ public class ProgressRecordButtonView extends RecordButtonView {
     }
 
     private float dpToPx(int px) {
-        return TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                px,
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, px,
                 Resources.getSystem().getDisplayMetrics());
     }
-
 }

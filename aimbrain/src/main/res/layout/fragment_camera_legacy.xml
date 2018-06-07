@@ -7,36 +7,14 @@
     android:screenOrientation="portrait"
     tools:context="com.aimbrain.sdk.faceCapture.fragments.CameraLegacyFragment">
 
-    <com.aimbrain.sdk.faceCapture.AutoFitSurfaceView
+    <com.aimbrain.sdk.faceCapture.views.FixedAspectSurfaceView
         android:id="@+id/faceCaptureSurface"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
 
-    <LinearLayout
+    <com.aimbrain.sdk.faceCapture.views.FaceFinderSurfaceView
+        android:id="@+id/overlaySurfaceView"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:layout_alignParentBottom="true"
-        android:gravity="bottom">
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <com.aimbrain.sdk.views.ProgressRecordButtonView
-            android:id="@+id/buttonRecord"
-            android:clickable="true"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:visibility="gone"
-            />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-    </LinearLayout>
+        android:layout_height="wrap_content" />
 
 </RelativeLayout>

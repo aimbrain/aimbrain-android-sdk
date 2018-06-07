@@ -12,7 +12,6 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
-import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -21,11 +20,9 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AnimationUtils;
-import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -38,6 +35,7 @@ import com.aimbrain.aimbrain.R;
 import com.aimbrain.sdk.array.Arrays;
 import com.aimbrain.sdk.faceCapture.helpers.LayoutUtil;
 import com.aimbrain.sdk.faceCapture.helpers.VideoSize;
+import com.aimbrain.sdk.faceCapture.views.FaceFinderSurfaceView;
 import com.aimbrain.sdk.util.Logger;
 
 import java.util.List;
@@ -64,14 +62,10 @@ public abstract class FaceCaptureActivity extends Activity {
      */
     public static final String RECORDING_HINT = "recordingHint";
     /**
-    * Proportion of width for overlay and bounding box
-    */
-    public static final double BOX_WIDTH = 0.5;
+     * specify token text on camera overlay
+     */
+    public static final String EXTRA_TOKEN_TEXT = "tokenText";
 
-    /**
-    * Ration of height and width for overlay and bounding box
-    */
-    public static final double BOX_RATIO = 1.5;
     protected static final int PERMISSIONS_REQUEST_CREATE = 2211;
     protected static final int PERMISSIONS_REQUEST_RESUME = 2212;
     protected static final int PERMISSIONS_REQUEST_CAMERA_BUTTON = 2213;
@@ -83,9 +77,10 @@ public abstract class FaceCaptureActivity extends Activity {
     protected boolean inPreview;
     protected LayoutInflater controlInflater;
     protected VideoSize screenSize;
-    protected OverlaySurfaceView overlaySurface;
+    protected FaceFinderSurfaceView overlaySurface;
     protected TextSwitcher lowerTextSwitcher;
     protected TextView upperTextView;
+    protected TextView tokenTextView;
     protected RelativeLayout lowerTextRelativeLayout;
     protected RelativeLayout upperTextRelativeLayout;
     protected ImageButton captureButton;
@@ -128,8 +123,9 @@ public abstract class FaceCaptureActivity extends Activity {
         setupOverlay();
         String upperText = getIntent().getStringExtra(EXTRA_UPPER_TEXT);
         String lowerText = getIntent().getStringExtra(EXTRA_LOWER_TEXT);
+        String tokenText = getIntent().getStringExtra(EXTRA_TOKEN_TEXT);
         recordingHint = getIntent().getStringExtra(RECORDING_HINT);
-        setupOverlayTexts(upperText, lowerText);
+        setupOverlayTexts(upperText, lowerText, tokenText);
     }
 
     protected boolean permissionsGranted(String[] requestedPermissions) {
@@ -301,12 +297,13 @@ public abstract class FaceCaptureActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT);
         this.addContentView(viewControl, layoutParamsControl);
 
-        overlaySurface = (OverlaySurfaceView) findViewById(R.id.overlaySurfaceView);
+        overlaySurface = (FaceFinderSurfaceView) findViewById(R.id.overlaySurfaceView);
         overlaySurfaceHolder = overlaySurface.getHolder();
         upperTextRelativeLayout = (RelativeLayout) findViewById(R.id.upperTextRelativeLayout);
         upperTextView = (TextView) findViewById(R.id.upperTextView);
         lowerTextRelativeLayout = (RelativeLayout) findViewById(R.id.lowerTextRelativeLayout);
         lowerTextSwitcher = (TextSwitcher) findViewById(R.id.lowerTextSwitcher);
+        tokenTextView = (TextView) findViewById(R.id.tokenTextView);
 
         TextView lowerTextView = new TextView(this);
         lowerTextView.setTextAppearance(this, android.R.style.TextAppearance_Medium);
@@ -333,12 +330,19 @@ public abstract class FaceCaptureActivity extends Activity {
         captureButton = (ImageButton) findViewById(R.id.photoButton);
     }
 
-    private void setupOverlayTexts(String upperText, String lowerText){
+    private void setupOverlayTexts(String upperText, String lowerText, String token){
         if (upperText != null) {
             upperTextView.setText(upperText);
             upperTextView.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
         }
 
+        if (token != null) {
+            tokenTextView.setText(token);
+            tokenTextView.setVisibility(View.VISIBLE);
+        }
+        else {
+            tokenTextView.setVisibility(View.GONE);
+        }
         if (lowerText == null) {
             lowerText = "";
         }

@@ -1,4 +1,4 @@
-package com.aimbrain.sdk.faceCapture;
+package com.aimbrain.sdk.faceCapture.views;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -7,30 +7,33 @@ import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 
+import com.aimbrain.sdk.faceCapture.FaceCaptureActivity;
+import com.aimbrain.sdk.faceCapture.PreviewManager;
+
 import static android.view.ViewGroup.*;
 
-public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHolder.Callback {
-
+public class FaceFinderSurfaceView extends FixedAspectSurfaceView implements SurfaceHolder.Callback {
     private int mSurfaceWidth;
     private int mSurfaceHeight;
+    private Integer mFinderWidth;
+    private Integer mFinderHeight;
 
-    public OverlaySurfaceView(Context context) {
+    public FaceFinderSurfaceView(Context context) {
         super(context);
         setDefaultOptions();
     }
 
-    public OverlaySurfaceView(Context context, AttributeSet attrs) {
+    public FaceFinderSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setDefaultOptions();
     }
 
-    public OverlaySurfaceView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public FaceFinderSurfaceView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         setDefaultOptions();
     }
@@ -56,22 +59,24 @@ public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHol
         int overdraw = 3; // draw larger rect to avoid seams on the sides
         canvas.drawRect(new RectF(content.left - overdraw, content.top - overdraw, content.right + overdraw, content.bottom + overdraw), getOverlayBackgroundPaint());
 
-        RectF mask = getMaskCanvasRect();
-        canvas.drawRoundRect(mask, mask.top, mask.top, getTransparentPaint());
+        RectF mask;
+        int radius;
+        if (mFinderWidth != null && mFinderHeight != null) {
+            int left = (width - mFinderWidth) / 2;
+            int top = (height - mFinderHeight) / 2;
+            mask = new RectF(left, top, left + mFinderWidth, top + mFinderHeight);
+            radius = Math.min(mFinderWidth / 2, mFinderHeight / 2);
+        }
+        else {
+            mask = getMaskBounds();
+            radius = (int) (mask.width() / 2);
+        }
+        canvas.drawRoundRect(mask, radius, radius, getTransparentPaint());
         holder.unlockCanvasAndPost(canvas);
     }
 
     public RectF getMaskBounds() {
         return getMaskBoundsOld();
-    }
-
-    private RectF getMaskCanvasRect() {
-        RectF contentRect = getClippedContentRect();
-        float width = (float) (FaceCaptureActivity.BOX_WIDTH * contentRect.width());
-        float height = (float) (FaceCaptureActivity.BOX_RATIO * width);
-        float mh = contentRect.width() - width;
-        float mv = contentRect.height() - height;
-        return new RectF(contentRect.left + mh / 2, contentRect.top + mv / 2, contentRect.right - mh / 2, contentRect.bottom - mv / 2);
     }
 
     /**
@@ -103,6 +108,12 @@ public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHol
         return new RectF(left, top, right, bottom);
     }
 
+
+    public void setFinderSize(int width, int height) {
+        mFinderWidth = width;
+        mFinderHeight = height;
+    }
+
     @Deprecated
     @NonNull
     private RectF getMaskBoundsOld() {
@@ -117,12 +128,12 @@ public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHol
 
     @Deprecated
     public float getMaskHeight() {
-        return (float) (FaceCaptureActivity.BOX_RATIO * getMaskWidth());
+        return (float) (FaceFinderUtil.BOX_RATIO * getMaskWidth());
     }
 
     @Deprecated
     public float getMaskWidth() {
-        return (float) (getHolder().getSurfaceFrame().width() * FaceCaptureActivity.BOX_WIDTH);
+        return (float) (getHolder().getSurfaceFrame().width() * FaceFinderUtil.BOX_WIDTH);
     }
 
     @NonNull
@@ -144,7 +155,6 @@ public class OverlaySurfaceView extends AutoFitSurfaceView implements SurfaceHol
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-
     }
 
     @Override

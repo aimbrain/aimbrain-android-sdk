@@ -1,5 +1,9 @@
 # AimBrain SDK integration
 
+## Prerequisites
+* minSdkVersion 14+ (Android 4.0 or above)
+* compileSdkVersion 23
+
 ## Permissions
 
 SDK requires the following permissions:
@@ -361,7 +365,7 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 }
 ```
 
-## Recording video of user's face
+## Recording video of user face
 
 In order to record video containing user's face  `VideoFaceCaptureActivity` has to be
 started. The result can be obtained in `onActivtyResult` if result code is `RESULT_OK`
@@ -403,6 +407,60 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 	}
 }
 ```
+
+## Retrieving and using face token
+
+In order to enroll or authenticate via face module using face token you have to record user voice in user face video and submit it to the API. Face recording must contain user reading text retrieved with `getFaceToken` method.
+
+The token text is retrieved with `getFaceToken` method. The parameter type of this method
+specifies use case for retrieved text.
+
+Text to be presented to the user is returned by the result method `getToken()`.
+
+```java
+Manager.getInstance().getFaceToken(FaceTokenType.AUTH, new FaceTokenCallback() {
+    @Override
+    public void success(FaceTokenModel tokenModel) {
+        String token = tokenModel.getToken();
+        // use token, e.g. present video recording activity with token
+    }
+});
+```
+To record user reading the token use face capture activity with audio recording enabled. Recorded videos can be used in `sendProvidedFaceCapturesToAuthenticate` and `sendProvidedFaceCapturesToEnroll` to authenticate or enroll.
+
+## Face token types
+
+Face token retrieval method `getFaceToken` takes mandatory `type` parameter.
+
+All possible type values are defined in the enum `FaceTokenType`:
+* Token with type `AUTH` is used for authentication calls.
+* Tokens with types `ENROLL1`, `ENROLL2`, `ENROLL3`, `ENROLL4`, `ENROLL5` are used for enrollment.
+
+To complete enrollment face tokens must be retrieved with each `FaceTokenType` value used for enrollment (`ENROLLN`). Each face token must be presented to the user, recorded and enrolled successfully.
+
+### Serialising face token request call
+
+To get serialised face token request use
+```java
+SerializedRequest request = Manager.getInstance().getSerializedFaceToken(FaceTokenType.AUTH, metadata)
+```
+
+## Recording video of user face with audio included
+
+For face token enrollment and authentication audio needs to be recorded. To record video with audio included pass  `VideoFaceCaptureActivity.EXTRA_RECORDING_TOKEN_HINT`  instead of `VideoFaceCaptureActivity.EXTRA_RECORDING_HINT`. This will enable sound recording mode in video capture.
+
+Starting capture activity with audio recording:
+```java
+//...
+Intent intent = new Intent(this, VideoFaceCaptureActivity.class);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_UPPER_TEXT, upperText);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_LOWER_TEXT, lowerText);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_DURATION_MILLIS, 2000);
+intent.putExtra(VideoFaceCaptureActivity.EXTRA_RECORDING_TOKEN_HINT, recordingHint);
+startActivityForResult(intent, videoRequestCode);
+//...
+```
+Other VideoFaceCaptureActivity configuration settings and result retrieval is the same as in user face video recording. Authentication API calls and enrollment API calls are the same for recordings with and without face token.
 
 ## Authenticating with the facial module
 

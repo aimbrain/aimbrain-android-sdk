@@ -1,22 +1,22 @@
-package com.aimbrain.sdk.faceCapture;
+package com.aimbrain.sdk.faceCapture.views;
 
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.SurfaceView;
 
-public class AutoFitSurfaceView extends SurfaceView {
+public class FixedAspectSurfaceView extends SurfaceView {
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 
-    public AutoFitSurfaceView(Context context) {
+    public FixedAspectSurfaceView(Context context) {
         this(context, null);
     }
 
-    public AutoFitSurfaceView(Context context, AttributeSet attrs) {
+    public FixedAspectSurfaceView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public AutoFitSurfaceView(Context context, AttributeSet attrs, int defStyle) {
+    public FixedAspectSurfaceView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
     }
 

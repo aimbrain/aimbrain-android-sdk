@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.aimbrain.sdk.faceCapture.OverlaySurfaceView
+    <com.aimbrain.sdk.faceCapture.views.FaceFinderSurfaceView
         android:id="@+id/overlaySurfaceView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
@@ -13,12 +13,12 @@
         android:layout_height="match_parent">
 
         <LinearLayout
+            android:id="@+id/photoButtonContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
-            android:id="@+id/photoButtonContainer">
+            android:orientation="horizontal">
 
             <ImageButton
                 android:id="@+id/photoButton"
@@ -58,14 +58,36 @@
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true">
 
-            <TextSwitcher
-                android:id="@+id/lowerTextSwitcher"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_centerVertical="true"
-                android:layout_marginLeft="@dimen/overlay_text_horizontal_margin"
-                android:layout_marginRight="@dimen/overlay_text_horizontal_margin" />
+                android:orientation="vertical">
+
+                <TextSwitcher
+                    android:id="@+id/lowerTextSwitcher"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginLeft="@dimen/overlay_text_horizontal_margin"
+                    android:layout_marginRight="@dimen/overlay_text_horizontal_margin"
+                    android:gravity="center"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tokenTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:maxLines="2"
+                    android:text=""
+                    android:textAppearance="?android:attr/textAppearanceMedium"
+                    android:textColor="#ffffff"
+                    android:textSize="21sp" />
+            </LinearLayout>
         </RelativeLayout>
 
         <ProgressBar

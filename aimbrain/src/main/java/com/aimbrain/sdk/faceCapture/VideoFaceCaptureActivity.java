@@ -4,44 +4,56 @@ package com.aimbrain.sdk.faceCapture;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Fragment;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Rect;
 import android.os.Bundle;
-import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
 import com.aimbrain.aimbrain.R;
 import com.aimbrain.sdk.array.Arrays;
 import com.aimbrain.sdk.faceCapture.fragments.Camera2Fragment;
+import com.aimbrain.sdk.faceCapture.fragments.CameraUiViewProvider;
 import com.aimbrain.sdk.faceCapture.fragments.CameraLegacyFragment;
-import com.aimbrain.sdk.faceCapture.fragments.AbstractCameraPermissionFragment;
-import com.aimbrain.sdk.faceCapture.fragments.LayoutOverlayObserver;
+import com.aimbrain.sdk.faceCapture.fragments.BaseCameraFragment;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy;
 import com.aimbrain.sdk.faceCapture.helpers.CameraChoiceStrategy.CameraChoice;
+import com.aimbrain.sdk.faceCapture.views.CameraUiView;
 import com.aimbrain.sdk.util.Logger;
 
 
 public class VideoFaceCaptureActivity extends Activity
-        implements AbstractCameraPermissionFragment.ActivityCallback, LayoutOverlayObserver {
+        implements BaseCameraFragment.ActivityCallback, CameraUiViewProvider {
 
     private static final String TAG = VideoFaceCaptureActivity.class.getSimpleName();
 
-    public static final String EXTRA_DURATION_MILLIS = "durationMillis";
     /**
-     * specify text in upper hint view on camera overlay
+     * Recorded video duration.
+     */
+    public static final String EXTRA_DURATION_MILLIS = "durationMillis";
+
+    /**
+     * Upper hint text on camera overlay.
      */
     public static final String EXTRA_UPPER_TEXT = "upperText";
+
     /**
-     * specify text in lower hint view on camera overlay
+     * Lower hint text on camera overlay.
      */
     public static final String EXTRA_LOWER_TEXT = "lowerText";
+
     /**
-     * specify text in lower hint view on camera overlay while capturing face
+     * Lower hint text on camera overlay shown while capturing face
      */
     public static final String EXTRA_RECORDING_HINT = "recordingHint";
+
+    /**
+     * Lower hint text on camera overlay shown while capturing face with audio
+     */
+    public static final String EXTRA_RECORDING_TOKEN_HINT = "tokenText";
 
     /**
      * Specify to force used camera api
@@ -67,9 +79,7 @@ public class VideoFaceCaptureActivity extends Activity
         setContentView(R.layout.activity_video_capture);
 
         int durationMillis = getIntent().getIntExtra(EXTRA_DURATION_MILLIS, 2000);
-        String upperText = getIntent().getStringExtra(EXTRA_UPPER_TEXT);
-        String lowerText = getIntent().getStringExtra(EXTRA_LOWER_TEXT);
-        String recordingHint = getIntent().getStringExtra(EXTRA_RECORDING_HINT);
+        boolean captureAudio = getIntent().getStringExtra(EXTRA_RECORDING_TOKEN_HINT) != null;
 
         CameraChoice choice = CameraChoiceStrategy.chooseCamera(getApplicationContext());
 
@@ -80,11 +90,9 @@ public class VideoFaceCaptureActivity extends Activity
 
         Fragment cameraFragment;
         if (choice == CameraChoice.CAMERA2) {
-            cameraFragment = Camera2Fragment.newInstance(upperText, lowerText,
-                    recordingHint, durationMillis);
+            cameraFragment = Camera2Fragment.newInstance(durationMillis, captureAudio);
         } else {
-            cameraFragment = CameraLegacyFragment.newInstance(upperText, lowerText,
-                    recordingHint, durationMillis);
+            cameraFragment = CameraLegacyFragment.newInstance(durationMillis, captureAudio);
         }
 
         getFragmentManager().beginTransaction()
@@ -124,8 +132,8 @@ public class VideoFaceCaptureActivity extends Activity
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         Logger.i(TAG, "onRequestPermissionsResult in activity");
         switch (requestCode) {
-            case AbstractCameraPermissionFragment.PERMISSIONS_REQUEST_CREATE:
-            case AbstractCameraPermissionFragment.PERMISSIONS_REQUEST_RESUME: {
+            case BaseCameraFragment.PERMISSIONS_REQUEST_CREATE:
+            case BaseCameraFragment.PERMISSIONS_REQUEST_RESUME: {
                 if (grantResults.length > 0
                         && Arrays.contains(grantResults, PackageManager.PERMISSION_DENIED)) {
                     displayErrorAndFinish("Face authentication needs requested permissions granted.");
@@ -135,23 +143,22 @@ public class VideoFaceCaptureActivity extends Activity
     }
 
     @Override
-    public View getLayoutOverlayView() {
-        return null;
-    }
+    public CameraUiView createUiView(Context context) {
+        Intent i = getIntent();
+        String upperText = i.getStringExtra(EXTRA_UPPER_TEXT);
+        String lowerText = i.getStringExtra(EXTRA_LOWER_TEXT);
+        String recordHint = i.getStringExtra(EXTRA_RECORDING_HINT);
+        String tokenText = i.getStringExtra(EXTRA_RECORDING_TOKEN_HINT);
 
-    @Override
-    public void onRecordingStarted() {
-    }
+        if (tokenText != null) {
+            recordHint = tokenText;
+        }
 
-    @Override
-    public void onRecordingStopped() {
-    }
-
-    @Override
-    public void setOverlayViewDimensions(int height, int width) {
-    }
-
-    @Override
-    public void setRecordButtonPosition(Rect position) {
+        CameraUiView uiView = new CameraUiView(context);
+        uiView.setUpperText(upperText);
+        uiView.setLowerText(lowerText);
+        uiView.setRecordHintText(recordHint);
+        uiView.setRecordProgressText("Capturing\n{0} s. left");
+        return uiView;
     }
 }

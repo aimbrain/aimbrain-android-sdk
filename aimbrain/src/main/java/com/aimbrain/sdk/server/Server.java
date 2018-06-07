@@ -19,6 +19,8 @@ import com.aimbrain.sdk.exceptions.SessionException;
 import com.aimbrain.sdk.helper.Base64Helper;
 import com.aimbrain.sdk.models.BehaviouralDataModel;
 import com.aimbrain.sdk.models.FaceCompareModel;
+import com.aimbrain.sdk.models.FaceTokenModel;
+import com.aimbrain.sdk.models.FaceTokenType;
 import com.aimbrain.sdk.models.ScoreModel;
 import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
@@ -69,7 +71,8 @@ public class Server {
     private URL sessionURL;
     private URL submitBehaviouralURL;
     private URL scoreURL;
-    private URL faceCompare;
+    private URL faceCompareURL;
+    private URL faceTokenURL;
     private URL voiceTokenURL;
     private HashMap<FaceActions, URL> faceActionsURLs;
     private HashMap<VoiceActions, URL> voiceActionsURLs;
@@ -98,7 +101,8 @@ public class Server {
             this.sessionURL = new URL(baseURL, "sessions");
             this.submitBehaviouralURL = new URL(baseURL, "behavioural");
             this.scoreURL = new URL(baseURL, "score");
-            this.faceCompare = new URL(baseURL, "face/compare");
+            this.faceCompareURL = new URL(baseURL, "face/compare");
+            this.faceTokenURL = new URL(baseURL, "face/token");
             this.faceActionsURLs = new HashMap<>();
             this.faceActionsURLs.put(FaceActions.FACE_AUTH, new URL(baseURL, "face/auth"));
             this.faceActionsURLs.put(FaceActions.FACE_ENROLL, new URL(baseURL, "face/enroll"));
@@ -356,6 +360,73 @@ public class Server {
         return jsonObject;
     }
 
+    public void getFaceToken(FaceTokenType tokenType, byte[] metadata, final FaceTokenCallback tokenCallback) throws InternalException, ConnectException, SessionException {
+        if (!apiCallsAllowed) {
+            throw new IllegalStateException("Current configuration does not allow API calls");
+        }
+
+        if (!isOnline()) {
+            throw new ConnectException("Unable to connect to server (check network settings).");
+        }
+        if (session == null) {
+            throw new SessionException("Uninitialized session.");
+        }
+
+        try {
+            JSONObject jsonObject = JSONForFaceToken(tokenType, metadata);
+            AMBNObjectRequest jsonRequest = new AMBNObjectRequest
+                    (getHeadersMap(jsonObject, this.faceTokenURL), Request.Method.POST,
+                            this.faceTokenURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            parseFaceTokenResponse(response, tokenCallback);
+                        }
+                    }, new AMBNResponseErrorListener());
+
+            sendRequest(jsonRequest);
+        } catch (JSONException | InvalidSignatureException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    @VisibleForTesting
+    protected void parseFaceTokenResponse(JSONObject response, FaceTokenCallback tokenCallback) {
+        try {
+            if (tokenCallback != null) {
+                String token = response.getString("token");
+                byte[] metadata = null;
+                if (response.has("metadata")) {
+                    String metadataString = response.getString("metadata");
+                    metadata = base64.decode(metadataString, Base64.DEFAULT);
+                }
+                FaceTokenModel tokenModel = new FaceTokenModel(token, metadata);
+                tokenCallback.success(tokenModel);
+            }
+        } catch (JSONException e) {
+            Logger.e(TAG, "json", e);
+        }
+    }
+
+    public SerializedRequest getSerializedFaceToken(FaceTokenType tokenType, byte[] metadata) throws InternalException, SessionException {
+        try {
+            JSONObject jsonObject = JSONForFaceToken(tokenType, metadata);
+            return new SerializedRequest(jsonObject.toString());
+        }
+        catch (JSONException e) {
+            throw new InternalException("Unable to create correct session request.");
+        }
+    }
+
+    @NonNull
+    private JSONObject JSONForFaceToken(FaceTokenType tokenType, byte[] metadata) throws JSONException, SessionException {
+        JSONObject jsonObject = wrapJSONObjectWithSession(new JSONObject());
+        jsonObject.put("tokentype", tokenType.toString());
+        if (metadata != null) {
+            jsonObject.put("metadata", base64.encodeToString(metadata, Base64.NO_WRAP));
+        }
+        return jsonObject;
+    }
+
     public void sendProvidedFaceCaptures(StringListDataModel photos, byte[] metadata, final FaceCapturesCallback callback, FaceActions faceAction)  throws InternalException, ConnectException, SessionException {
         if (!apiCallsAllowed) {
             throw new IllegalStateException("Current configuration does not allow API calls");
@@ -433,7 +504,7 @@ public class Server {
             AMBNObjectRequest jsonRequest = null;
             try {
                 jsonRequest = new AMBNObjectRequest
-                        (getHeadersMap(jsonObject, this.faceCompare), Request.Method.POST, this.faceCompare.toString(), jsonObject, new Response.Listener<JSONObject>() {
+                        (getHeadersMap(jsonObject, this.faceCompareURL), Request.Method.POST, this.faceCompareURL.toString(), jsonObject, new Response.Listener<JSONObject>() {
                             @Override
                             public void onResponse(JSONObject response) {
                                 parseCompareFacesRequest(response, callback);

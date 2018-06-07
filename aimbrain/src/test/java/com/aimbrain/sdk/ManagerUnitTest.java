@@ -8,6 +8,7 @@ import android.view.View;
 import com.aimbrain.sdk.exceptions.InternalException;
 import com.aimbrain.sdk.exceptions.SessionException;
 import com.aimbrain.sdk.mock.ManagerMock;
+import com.aimbrain.sdk.models.FaceTokenType;
 import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
@@ -20,6 +21,7 @@ import com.aimbrain.sdk.server.FaceCapturesAuthenticateCallback;
 import com.aimbrain.sdk.server.FaceCapturesCallback;
 import com.aimbrain.sdk.server.FaceCapturesEnrollCallback;
 import com.aimbrain.sdk.server.FaceCompareCallback;
+import com.aimbrain.sdk.server.FaceTokenCallback;
 import com.aimbrain.sdk.server.ScoreCallback;
 import com.aimbrain.sdk.server.Server;
 import com.aimbrain.sdk.server.SessionCallback;
@@ -294,6 +296,32 @@ public class ManagerUnitTest {
     public void testSendProvidedVoiceCapturesToAuthenticateWithoutServer() throws SessionException, InternalException, ConnectException {
         ManagerMock manager = new ManagerMock(null);
         manager.sendProvidedVoiceCapturesToAuthenticate(new byte[10], mock(VoiceCapturesAuthenticateCallback.class));
+    }
+
+    @Test
+    public void testGetFaceToken() throws SessionException, InternalException, ConnectException {
+        ManagerMock manager = new ManagerMock(server);
+        manager.getFaceToken(null, null);
+        verify(server, times(1)).getFaceToken(any(FaceTokenType.class), any(byte[].class), any(FaceTokenCallback.class));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testGetFaceTokenWithoutServer() throws InternalException, SessionException, ConnectException {
+        ManagerMock manager = new ManagerMock(null);
+        manager.getFaceToken(null, null);
+    }
+
+    @Test
+    public void testGetSerializedFaceToken() throws SessionException, InternalException, ConnectException {
+        ManagerMock manager = new ManagerMock(server);
+        manager.getSerializedFaceToken(null, null);
+        verify(server, times(1)).getSerializedFaceToken(any(FaceTokenType.class), any(byte[].class));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testGetSerializedFaceTokenWithoutServer() throws InternalException, SessionException, ConnectException {
+        ManagerMock manager = new ManagerMock(null);
+        manager.getSerializedFaceToken(null, null);
     }
 
     @Test

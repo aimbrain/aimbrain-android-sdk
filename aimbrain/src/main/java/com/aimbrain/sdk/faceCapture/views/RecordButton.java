@@ -1,7 +1,9 @@
 package com.aimbrain.sdk.faceCapture.views;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
@@ -11,163 +13,169 @@ import android.view.View;
 import com.aimbrain.aimbrain.R;
 
 public class RecordButton extends View {
-
-    private static final int FRAMES_PER_SECOND = 60;
-
-    private static final int RECTANGLE_ANIMATION_FRAMES = FRAMES_PER_SECOND / 7;
-    private static final int CIRCLE_ANIMATION_FRAMES = FRAMES_PER_SECOND / 5;
-    private static final int ANIMATING_CIRCLES = 7;
+    private static final int FRAMES_PER_SECOND = 20;
 
     private static final int STATE_IDLE = 0;
     private static final int STATE_IDLE_TOUCHED = 1;
-    private static final int STATE_RECORDING = 2;
+    private static final int STATE_PREPARING_RECORDING = 2;
+    private static final int STATE_RECORDING = 3;
+    private static final int STATE_RECORDED = 4;
 
     private int state = STATE_IDLE;
 
-    private static final float CIRCLE_RADIUS_RATIO = 0.7f;
-    private static final float CENTER_CIRCLE_RADIUS_RATIO = 0.35f;
+    private static final float RADIUS_RATIO = 0.95f;
+    private static final float INNER_RADIUS_RATIO = 0.4f;
 
-    private int frame = 1;
-    RectF centerRect;
+    private long animationStart;
+    private int animationDuration;
+    private int recordDuration;
+
+    private RectF innerRect = new RectF();
+    private RectF outerBorderRect = new RectF();
+    private Paint paint;
 
     public RecordButton(Context context) {
         super(context);
+        initView();
     }
 
     public RecordButton(Context context, AttributeSet attrs) {
         super(context, attrs);
+        initView();
     }
 
     public RecordButton(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        initView();
     }
 
-    public void startRecording() {
-        state = STATE_RECORDING;
+    private void initView() {
+        paint = new Paint();
+        paint.setAntiAlias(true);
+    }
+
+    public void startRecording(int prepare, int record) {
+        recordDuration = record;
+        animationStart = System.currentTimeMillis();
+
+        if (prepare > 0) {
+            animationDuration = prepare;
+            state = STATE_PREPARING_RECORDING;
+        }
+        else {
+            animationDuration = record;
+            state = STATE_RECORDING;
+        }
     }
 
     public void stopRecording() {
-        state = STATE_IDLE;
+        if (state != STATE_RECORDED) {
+            state = STATE_RECORDED;
+            animationStart = System.currentTimeMillis();
+            animationDuration = 500;
+        }
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        float centerX = getWidth() / 2;
-        float centerY = getHeight() / 2;
+        float cx = getWidth() / 2;
+        float cy = getHeight() / 2;
+        float radius = Math.min(cx, cy) * RADIUS_RATIO;
+        float innerRadius = radius * INNER_RADIUS_RATIO;
 
-        float radius = centerX * CIRCLE_RADIUS_RATIO;
-        float smallRadius = radius * CENTER_CIRCLE_RADIUS_RATIO;
+        innerRect.left = cx - innerRadius;
+        innerRect.right = cx + innerRadius;
+        innerRect.top = cy - innerRadius;
+        innerRect.bottom = cy + innerRadius;
 
-        if (state == STATE_IDLE || state == STATE_IDLE_TOUCHED) {
-            drawStartRecordingButton(canvas, centerX, centerY, radius, smallRadius);
-            frame = 1;
-        } else {
+        float border = 3.0f;
+        outerBorderRect.left = cx - radius - border;
+        outerBorderRect.right = cx + radius + border;
+        outerBorderRect.top = cy - radius - border;
+        outerBorderRect.bottom = cy + radius + border;
 
-            if (centerRect == null) {
-                float left = centerX - smallRadius;
-                float right = centerX + smallRadius;
-                float top = centerY - smallRadius;
-                float bottom = centerY + smallRadius;
-                centerRect = new RectF(left, top, bottom, right);
+        Resources res = getResources();
+
+        if (state == STATE_IDLE) {
+            paint.setColor(res.getColor(R.color.color_record_button_idle));
+            canvas.drawCircle(cx, cy, radius, paint);
+            paint.setColor(res.getColor(R.color.color_record_center));
+            canvas.drawCircle(cx, cy, innerRadius, paint);
+        }
+        else if (state == STATE_IDLE_TOUCHED) {
+            paint.setColor(res.getColor(R.color.color_record_button_touched));
+            canvas.drawCircle(cx, cy, radius, paint);
+            paint.setColor(res.getColor(R.color.color_record_center));
+            canvas.drawCircle(cx, cy, innerRadius, paint);
+        }
+        else if (state == STATE_PREPARING_RECORDING) {
+            float progress = currentAnimationProgress();
+            int green = res.getColor(R.color.color_record_button_idle);
+            int red = res.getColor(R.color.color_record_button_recording);
+            int color = interpolateColor(green, red, progress);
+            paint.setColor(color);
+            canvas.drawCircle(cx, cy, radius, paint);
+            paint.setColor(res.getColor(R.color.color_record_center));
+            float rectangleRadius = innerRadius - (innerRadius * progress);
+            canvas.drawRoundRect(innerRect, rectangleRadius, rectangleRadius, paint);
+            if (progress >= 1.0) {
+                state = STATE_RECORDING;
+                animationStart = System.currentTimeMillis();
+                animationDuration = recordDuration;
             }
-
-            drawRecordingButton(canvas, centerX, centerY, radius, smallRadius, centerRect, frame);
-            frame++;
-            if (state == STATE_RECORDING) {
-                this.postInvalidateDelayed(1000 / FRAMES_PER_SECOND);
+            postInvalidateDelayed(1000 / FRAMES_PER_SECOND);
+        }
+        else if (state == STATE_RECORDING) {
+            float progress = currentAnimationProgress();
+            paint.setColor(res.getColor(R.color.color_record_button_progress));
+            paint.setStrokeWidth(2.0f);
+            canvas.drawArc(outerBorderRect, 0, progress * 360.0f, true, paint);
+            paint.setColor(res.getColor(R.color.color_record_button_recording));
+            canvas.drawCircle(cx, cy, radius, paint);
+            paint.setColor(res.getColor(R.color.color_record_center));
+            canvas.drawRoundRect(innerRect, 0, 0, paint);
+            postInvalidateDelayed(1000 / FRAMES_PER_SECOND);
+            if (progress >= 1.0) {
+                state = STATE_RECORDED;
+                animationStart = System.currentTimeMillis();
+                animationDuration = 500;
+            }
+        }
+        else if (state == STATE_RECORDED) {
+            int red = res.getColor(R.color.color_record_button_recording);
+            int redFinal = res.getColor(R.color.color_record_button_recorded);
+            float progress = currentAnimationProgress();
+            int color = interpolateColor(red, redFinal, progress);
+            paint.setColor(color);
+            canvas.drawCircle(cx, cy, radius, paint);
+            paint.setColor(res.getColor(R.color.color_recorded_center));
+            canvas.drawRoundRect(innerRect, 0, 0, paint);
+            if (progress < 1.0f) {
+                postInvalidateDelayed(1000 / FRAMES_PER_SECOND);
             }
         }
     }
 
-
-    private void drawRecordingButton(Canvas canvas, float centerX,
-                                     float centerY, float radius,
-                                     float smallRadius, RectF rect,
-                                     int frame) {
-
-        drawAnimatingCircles(canvas, centerX, centerY, frame);
-
-        drawCenterCircles(canvas, centerX, centerY, radius, smallRadius, rect, frame);
+    private float currentAnimationProgress() {
+        return Math.min(1.0f, (System.currentTimeMillis() - animationStart) / (float)animationDuration);
     }
 
-    private void drawCenterCircles(Canvas canvas, float centerX, float centerY,
-                                   float radius, float smallRadius, RectF rect, int frame) {
-        Paint paint = getPaint();
-        paint.setColor(getButtonColor());
-        canvas.drawCircle(centerX, centerY, radius, paint);
+    private float interpolate(float a, float b, float proportion) {
+        return (a + ((b - a) * proportion));
+    }
 
-        paint.setColor(getResources().getColor(R.color.color_record_center));
-
-        float rectangleRadius = 0;
-        if (frame < RECTANGLE_ANIMATION_FRAMES) {
-            float duration = RECTANGLE_ANIMATION_FRAMES / (float) frame;
-            rectangleRadius = smallRadius - (smallRadius / duration);
+    private int interpolateColor(int a, int b, float proportion) {
+        float[] hsva = new float[3];
+        float[] hsvb = new float[3];
+        Color.colorToHSV(a, hsva);
+        Color.colorToHSV(b, hsvb);
+        for (int i = 0; i < 3; i++) {
+            hsvb[i] = interpolate(hsva[i], hsvb[i], proportion);
         }
-        canvas.drawRoundRect(rect, rectangleRadius, rectangleRadius, paint);
+        return Color.HSVToColor(hsvb);
     }
-
-    private void drawAnimatingCircles(Canvas canvas, float centerX, float centerY, int frame) {
-        int realFrame = frame;
-        if (realFrame > CIRCLE_ANIMATION_FRAMES) {
-            realFrame = (frame % CIRCLE_ANIMATION_FRAMES) + 1;
-        }
-
-        float duration = (float) realFrame / CIRCLE_ANIMATION_FRAMES;
-        float radiusCorrection = (float) (centerX * 0.05 * duration);
-
-        for (int i = 1; i <= ANIMATING_CIRCLES; i++) {
-            drawAnimatingCircle(canvas, centerX, centerY, radiusCorrection, duration, i);
-        }
-    }
-
-
-    private void drawAnimatingCircle(Canvas canvas, float centerX,
-                                     float centerY, float radiusCorrection,
-                                     float duration, int circleNumber) {
-
-        Paint paint = getPaint();
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setColor(getResources().getColor(R.color.color_record_rings));
-        paint.setStrokeWidth((float) (centerX * 0.015));
-
-        float maxAlpha = 255 - ((255 / ANIMATING_CIRCLES) * (circleNumber - 1));
-        float minAlpha = 255 - ((255 / ANIMATING_CIRCLES) * circleNumber);
-        paint.setAlpha((int) (maxAlpha - ((maxAlpha - minAlpha) * duration)));
-        float radius = (float) (centerX * (0.6 + (circleNumber * 0.05)) + radiusCorrection);
-        canvas.drawCircle(centerX, centerY, radius, paint);
-    }
-
-    private void drawStartRecordingButton(Canvas canvas, float centerX,
-                                          float centerY, float radius, float smallRadius) {
-        Paint paint = getPaint();
-        paint.setColor(getButtonColor());
-        canvas.drawCircle(centerX, centerY, radius, paint);
-        paint.setColor(getResources().getColor(R.color.color_record_center));
-        canvas.drawCircle(centerX, centerY, smallRadius, paint);
-    }
-
-
-    private Paint getPaint() {
-        Paint paint = new Paint();
-        paint.setAntiAlias(true);
-        return paint;
-    }
-
-    private int getButtonColor() {
-        switch (state) {
-            case STATE_IDLE:
-                return getResources().getColor(R.color.color_record_button_idle);
-            case STATE_IDLE_TOUCHED:
-                return getResources().getColor(R.color.color_record_button_touched);
-            case STATE_RECORDING:
-                return getResources().getColor(R.color.color_record_button_recording);
-            default:
-                return getResources().getColor(R.color.color_record_button_idle);
-        }
-    }
-
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -189,6 +197,7 @@ public class RecordButton extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, widthMeasureSpec);
+        int heightMeasure = widthMeasureSpec;
+        super.onMeasure(widthMeasureSpec, heightMeasure);
     }
 }

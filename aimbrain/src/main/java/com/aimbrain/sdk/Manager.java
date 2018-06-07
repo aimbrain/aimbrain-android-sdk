@@ -19,6 +19,7 @@ import com.aimbrain.sdk.faceCapture.PictureManager;
 import com.aimbrain.sdk.memory.MemoryLimiter;
 import com.aimbrain.sdk.models.BehaviouralDataModel;
 import com.aimbrain.sdk.models.EventModel;
+import com.aimbrain.sdk.models.FaceTokenType;
 import com.aimbrain.sdk.models.SerializedRequest;
 import com.aimbrain.sdk.models.SessionModel;
 import com.aimbrain.sdk.models.StringListDataModel;
@@ -32,6 +33,7 @@ import com.aimbrain.sdk.server.FaceCapturesAuthenticateCallback;
 import com.aimbrain.sdk.server.FaceCapturesCallback;
 import com.aimbrain.sdk.server.FaceCapturesEnrollCallback;
 import com.aimbrain.sdk.server.FaceCompareCallback;
+import com.aimbrain.sdk.server.FaceTokenCallback;
 import com.aimbrain.sdk.server.ScoreCallback;
 import com.aimbrain.sdk.server.Server;
 import com.aimbrain.sdk.server.SessionCallback;
@@ -474,6 +476,51 @@ public class Manager {
         checkServerNotNull();
         Logger.v(TAG, "Serialized get current score");
         return server.getSerializedGetCurrentScore(metadata);
+    }
+
+    /**
+     * Sends request for face token to the server.
+     *
+     * @param tokenType     token type
+     * @param tokenCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void getFaceToken(FaceTokenType tokenType, FaceTokenCallback tokenCallback)
+            throws InternalException, SessionException, ConnectException {
+        this.getFaceToken(tokenType, null, tokenCallback);
+    }
+
+    /**
+     * Sends request for face token to the server.
+     *
+     * @param tokenType     token type
+     * @param metadata      request metadata
+     * @param tokenCallback callback for receiving response from server
+     * @throws InternalException     thrown when preparing request for server fails
+     * @throws SessionException      thrown when session has not yet been created
+     * @throws ConnectException      thrown when connection problem occurs
+     * @throws IllegalStateException thrown when current configuration is for request serialization only.
+     */
+    public void getFaceToken(FaceTokenType tokenType, byte[] metadata, FaceTokenCallback tokenCallback)
+            throws InternalException, SessionException, ConnectException {
+        checkServerNotNull();
+        Logger.v(TAG, "Voice token of type " + tokenType);
+        server.getFaceToken(tokenType, metadata, tokenCallback);
+    }
+
+    /**
+     * Retrieves serialized request of request for face token.
+     *
+     * @param metadata request metadata
+     * @throws InternalException thrown when preparing request fails
+     */
+    public SerializedRequest getSerializedFaceToken(FaceTokenType tokenType, byte[] metadata) throws InternalException, SessionException {
+        checkServerNotNull();
+        Logger.v(TAG, "Serialized face token of type " + tokenType);
+        return server.getSerializedFaceToken(tokenType, metadata);
     }
 
     /**

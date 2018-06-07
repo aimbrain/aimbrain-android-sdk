@@ -139,7 +139,6 @@ public class PhotoFaceCaptureActivity extends FaceCaptureActivity {
             }
 
             private void collectAndFinishWithPhotos(List<FutureTask<Bitmap>> pictureTasks) {
-
                 adjustPhotosExecutor.shutdown();
                 for (FutureTask<Bitmap> pictureTask : pictureTasks) {
                     try {
