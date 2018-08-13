@@ -19,7 +19,7 @@ public class AccelerometerEventListener implements SensorEventListener{
 
 
     public AccelerometerEventListener(int samplingPeriodMillis) {
-        this.sensorManager = (SensorManager) AMBNApplication.getInstance().getSystemService(Context.SENSOR_SERVICE);
+        this.sensorManager = (SensorManager) AMBNApplication.getInstance().getAppContext().getSystemService(Context.SENSOR_SERVICE);
         this.registered = false;
         this.samplingPeriodMillis = samplingPeriodMillis;
     }

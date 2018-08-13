@@ -27,12 +27,8 @@ Those permissions are included in SDK’s manifest (there is no need to include 
 
 In order to integrate aimbrain SDK it is necessary to set up application name in
 project’s `AndroidManifest.xml`.
-If no `Application` class extensions are needed, use `com.aimbrain.sdk.AMBNApplication.AMBNApplication`,
-otherwise use your extension's name.
-
-```xml
-<application android:name=“com.aimbrain.sdk.AMBNApplication.AMBNApplication”>
-  ```
+In your own Application class's onCreate(), initialize Aimbrain by passing in the
+application reference by calling AMBNApplication.initialize(this).
 
 ## Configuration
 In order to communicate with the server, the application identifier and secret need to be
@@ -149,14 +145,14 @@ public class MainActivity extends AppCompatActivity {
 }
   ```
 
-If data needs to be collected since the application creation, extend `AMBNApplication`
-class as shown in the example.
+If data needs to be collected since the application creation, do so in your application's onCreate().
 
 ```java
-public class MyApplication extends AMBNApplication {
+public class MyApplication extends Application {
 	@Override
   	public void onCreate() {
     	super.onCreate();
+    	AMBNApplication.initialize(this);
     	Manager.getInstance().startCollectingData(null);
   	}
 }

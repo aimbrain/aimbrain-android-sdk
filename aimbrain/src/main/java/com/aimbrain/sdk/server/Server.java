@@ -247,7 +247,7 @@ public class Server {
     }
 
     private boolean isOnline() {
-        ConnectivityManager cm = (ConnectivityManager) AMBNApplication.getInstance().getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm = (ConnectivityManager) AMBNApplication.getInstance().getAppContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         return netInfo != null && netInfo.isConnected();
     }

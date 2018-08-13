@@ -99,7 +99,7 @@ public class Manager {
     public void startCollectingData(Window window) {
         Logger.v(TAG, "Start collecting data in " + window);
         activityLifecycleCallback = new AMBNActivityLifecycleCallback();
-        AMBNApplication.getInstance().registerActivityLifecycleCallbacks(activityLifecycleCallback);
+        AMBNApplication.getInstance().getApp().registerActivityLifecycleCallbacks(activityLifecycleCallback);
         if (window != null) {
             windowChanged(window);
         }
@@ -185,7 +185,7 @@ public class Manager {
      */
     public void stopCollectingData() {
         Logger.v(TAG, "Stop collecting data");
-        AMBNApplication.getInstance().unregisterActivityLifecycleCallbacks(activityLifecycleCallback);
+        AMBNApplication.getInstance().getApp().unregisterActivityLifecycleCallbacks(activityLifecycleCallback);
         activityLifecycleCallback = null;
         if (timer != null) {
             Logger.v(TAG, "Stop submission timer");
